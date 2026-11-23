@@ -6420,12 +6420,13 @@ do
 
 	function Window:_BuildChangelogButton(hr, bsz)
 		local b, h = PaletteButton(hr, "history", 2, bsz)
+		self.ChangelogBtn = b
 		local dot = New("Frame", { Size = UDim2.fromOffset(8, 8), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -3, 0, 3), BorderSizePixel = 0, ZIndex = 6 }, b)
 		New("UICorner", { CornerRadius = UDim.new(1, 0) }, dot)
 		Bind(dot, { BackgroundColor3 = "Danger" })
 		local function refresh()
 			local latest = MX.Changelog[1]
-			b.Visible = latest ~= nil
+			b.Visible = true
 			dot.Visible = latest ~= nil and MX._clSeen ~= latest.Version
 		end
 		table.insert(MX._clListeners, refresh)
@@ -6543,6 +6544,142 @@ do
 end
 
 
+function MX:Rejoin()
+	local TS = game:GetService("TeleportService")
+	MX:Info("Rejoin", "Rejoining...", 3)
+	local ok, err = pcall(function()
+		if #Players:GetPlayers() <= 1 or game.JobId == "" then
+			TS:Teleport(game.PlaceId, LocalPlayer)
+		else
+			TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+		end
+	end)
+	if not ok then MX:Error("Rejoin failed", tostring(err), 4) end
+end
+
+function MX:ServerHop()
+	if MX._hopping then return end
+	MX._hopping = true
+	task.delay(6, function() MX._hopping = false end)
+	MX:Info("Server Hop", "Searching for another server...", 3)
+	task.spawn(function()
+		local TS = game:GetService("TeleportService")
+		local target
+		local cursor
+		for _ = 1, 5 do
+			if MX.Dead then return end
+			local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
+			if cursor then url = url .. "&cursor=" .. cursor end
+			local okGet, body = pcall(function() return game:HttpGet(url) end)
+			if not okGet then break end
+			local okJson, data = pcall(function() return HttpService:JSONDecode(body) end)
+			if not okJson or type(data) ~= "table" or type(data.data) ~= "table" then break end
+			local pool = {}
+			for _, sv in ipairs(data.data) do
+				if sv.id ~= game.JobId and tonumber(sv.playing) and tonumber(sv.maxPlayers) and sv.playing < sv.maxPlayers then
+					pool[#pool + 1] = sv
+				end
+			end
+			if #pool > 0 then
+				target = pool[math.random(#pool)]
+				break
+			end
+			cursor = data.nextPageCursor
+			if type(cursor) ~= "string" then break end
+		end
+		if target then
+			local ok, err = pcall(function() TS:TeleportToPlaceInstance(game.PlaceId, target.id, LocalPlayer) end)
+			if not ok then MX:Error("Server Hop failed", tostring(err), 4) end
+		else
+			local ok = pcall(function() TS:Teleport(game.PlaceId, LocalPlayer) end)
+			if ok then
+				MX:Info("Server Hop", "No server list, joining a new server", 3)
+			else
+				MX:Error("Server Hop failed", "No server found", 4)
+			end
+		end
+	end)
+end
+
+function Container:AddGameCard(o)
+	o = type(o) == "table" and o or {}
+	local card = Box(self.Content, { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = AY, LayoutOrder = self:_Order() }, "Element", 8)
+	Pad(card, 10, 10, 10, 10)
+	List(card, 8)
+
+	local head = New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 56), LayoutOrder = 1 }, card)
+	local iconBox = Box(head, { Size = UDim2.fromOffset(56, 56) }, "Card", 10, "Border")
+	local icon = New("ImageLabel", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ScaleType = Enum.ScaleType.Crop }, iconBox)
+	New("UICorner", { CornerRadius = UDim.new(0, 10) }, icon)
+	local nameLbl = Lbl(head, { Text = tostring(o.Title or game.Name), Position = UDim2.new(0, 68, 0, 8), Size = UDim2.new(1, -68, 0, 20), Font = FONT.Bold, TextSize = 16, TextTruncate = Enum.TextTruncate.AtEnd }, "Text")
+	local sub = Lbl(head, { Position = UDim2.new(0, 68, 0, 30), Size = UDim2.new(1, -68, 0, 16), Font = FONT.Reg, TextSize = 12, TextTruncate = Enum.TextTruncate.AtEnd }, "Sub")
+
+	task.spawn(function()
+		local r = MX:ResolveImage(o.Image or { Game = true })
+		if r and icon.Parent then icon.Image = r end
+	end)
+	if o.Title == nil then
+		task.spawn(function()
+			local ok, pi = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId) end)
+			if ok and type(pi) == "table" and pi.Name and nameLbl.Parent then nameLbl.Text = tostring(pi.Name) end
+		end)
+	end
+
+	local stats = New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 48), LayoutOrder = 2 }, card)
+	local vals = {}
+	for i, n in ipairs({ "FPS", "Session", "Ping" }) do
+		local t = Box(stats, { Size = UDim2.new(1 / 3, -6, 1, 0), Position = UDim2.new((i - 1) / 3, (i - 1) * 3, 0, 0) }, "Card", 8)
+		Lbl(t, { Text = n, Position = UDim2.new(0, 10, 0, 6), Size = UDim2.new(1, -20, 0, 14), TextSize = 11, Font = FONT.Reg, Tr = true }, "Sub")
+		vals[i] = Lbl(t, { Position = UDim2.new(0, 10, 0, 21), Size = UDim2.new(1, -20, 0, 22), TextSize = 16, Font = FONT.Bold, RichText = true, TextTruncate = Enum.TextTruncate.AtEnd }, "Text")
+	end
+
+	local btns = New("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, Touch and 40 or 34), LayoutOrder = 3 }, card)
+	local function button(i, ico, text, fn)
+		local b = Box(btns, { Size = UDim2.new(1 / 3, -6, 1, 0), Position = UDim2.new((i - 1) / 3, (i - 1) * 3, 0, 0) }, "Card", 8, "Border")
+		local inner = New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, b)
+		List(inner, 5, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+		local ic = MakeIcon(inner, ico, 14, "Accent")
+		if ic then ic.LayoutOrder = 1 end
+		Lbl(inner, { Text = text, Size = UDim2.new(0, 0, 1, 0), AutomaticSize = AX, TextSize = 12, Font = FONT.Med, LayoutOrder = 2, Tr = true }, "Text")
+		local hit = Hit(b, 3)
+		Hover(hit, b, "Card", "Hover")
+		Tap(hit, fn)
+	end
+	button(1, "copy", "Copy Job ID", function()
+		if game.JobId == "" then
+			MX:Warning("Job ID", "Not available in Studio", 2)
+		elseif Copy(game.JobId) then
+			MX:Success("Copied", "Job ID " .. game.JobId, 2)
+		else
+			MX:Error("Copy failed", "Clipboard is not supported", 3)
+		end
+	end)
+	button(2, "refresh-cw", "Rejoin", function() MX:Rejoin() end)
+	button(3, "shuffle", "Server Hop", function() MX:ServerHop() end)
+
+	local function refresh()
+		vals[1].Text = string.format('<font color="%s">%d</font>', Hex(FpsColor(FpsNow)), FpsNow)
+		local t = math.floor(time())
+		vals[2].Text = string.format("%02d:%02d:%02d", math.floor(t / 3600), math.floor(t / 60) % 60, t % 60)
+		local p = PingNow()
+		vals[3].Text = string.format('<font color="%s">%d ms</font>', Hex(PingColor(p)), p)
+		sub.Text = "Players " .. #Players:GetPlayers() .. " / " .. Players.MaxPlayers .. "   |   Place " .. game.PlaceId
+	end
+	refresh()
+	task.spawn(function()
+		while card.Parent and not MX.Dead do
+			task.wait(0.5)
+			refresh()
+		end
+	end)
+
+	local obj = {}
+	function obj:SetVisible(v) card.Visible = v end
+	self:_Reg(o.Title or "Game", card)
+	MX._Depend(card, o)
+	return obj
+end
+
 function MX:EnsureWatermark(title)
 	if MX.Watermark then return MX.Watermark end
 	local w = MX:CreateWatermark({ Title = title or (MX.Window and MX.Window.TitleText) or "MX HUB" })
@@ -6566,37 +6703,10 @@ function Window:_BuildHome(h)
 	local banner = tab:AddSection({ NoHeader = true, Side = "Full" })
 	banner:AddImage({ Height = h.ImageHeight or 110, Image = h.Image or MX.WelcomeImage })
 
-	local gameName
-	task.spawn(function()
-		local ok, pi = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId) end)
-		if ok and type(pi) == "table" and pi.Name then gameName = pi.Name end
-	end)
-	local function copyId(label, value)
-		if Copy(value) then MX:Success("Copied", label .. " " .. value, 2) end
-	end
+	local gc = tab:AddSection({ NoHeader = true, Side = "Full" })
+	gc:AddGameCard({ Title = h.GameTitle, Image = h.GameImage })
 
-	local info = tab:AddSection({ Title = "Game Stats", Icon = "gamepad-2", Side = "Left" })
-	info:AddStat({ Title = "Game", Icon = "gamepad-2", Interval = 2, Value = function() return gameName or game.Name end })
-	info:AddStat({ Title = "Players", Icon = "users", Interval = 2, Value = function() return #Players:GetPlayers() .. " / " .. Players.MaxPlayers end })
-	info:AddStat({ Title = "Server Uptime", Icon = "clock", Interval = 1, Value = function()
-		local t = math.floor(time())
-		return string.format("%02d:%02d:%02d", math.floor(t / 3600), math.floor(t / 60) % 60, t % 60)
-	end })
-	info:AddStat({ Title = "Place ID  (tap to copy)", Icon = "hash", Value = tostring(game.PlaceId), Callback = function() copyId("Place ID", tostring(game.PlaceId)) end })
-	info:AddStat({ Title = "Job ID  (tap to copy)", Icon = "server", Value = game.JobId == "" and "Studio" or string.sub(game.JobId, 1, 8), Callback = function()
-		if game.JobId ~= "" then copyId("Job ID", game.JobId) end
-	end })
-
-	local perf = tab:AddSection({ Title = "Performance", Icon = "gauge", Side = "Right" })
-	perf:AddStat({ Title = "FPS", Icon = "monitor", Interval = 0.5, Value = function()
-		return "[" .. Hex(FpsColor(FpsNow)) .. "]" .. FpsNow .. "[/]"
-	end })
-	perf:AddStat({ Title = "Ping", Icon = "wifi", Interval = 1, Value = function()
-		local p = PingNow()
-		return "[" .. Hex(PingColor(p)) .. "]" .. p .. " ms[/]"
-	end })
-
-	local ui = tab:AddSection({ Title = "Interface", Icon = "layout-dashboard", Side = "Right" })
+	local ui = tab:AddSection({ Title = "Interface", Icon = "layout-dashboard", Side = "Full" })
 	local function mirror(key, v)
 		local g = win.Gear and win.Gear[key]
 		if g then g:Set(v, true) end
