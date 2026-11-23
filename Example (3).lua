@@ -1,5 +1,5 @@
-getgenv().MX_NOTIFY_URL = "https://raw.githubusercontent.com/MXHUBOFCL/HUB/main/Notify.lua"
-local MX = loadstring(game:HttpGet("https://raw.githubusercontent.com/MXHUBOFCL/HUB/main/Source.lua"))()
+getgenv().MX_NOTIFY_URL = "https://raw.githubusercontent.com/yuewny/MX/main/Notify.lua"
+local MX = loadstring(game:HttpGet("https://raw.githubusercontent.com/yuewny/MX/main/Source.lua"))()
 
 local C = Color3.fromRGB
 MX:AddThemes({
