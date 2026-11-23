@@ -1,7 +1,7 @@
 local env = getgenv and getgenv() or _G
 local source = env.MX_SOURCE
 if not source and isfile and isfile("Source.lua") then source = readfile("Source.lua") end
-if not source then source = game:HttpGet(env.MX_SOURCE_URL or "https://raw.githubusercontent.com/MXHUBOFCL/HUB/main/Source.lua") end
+if not source then source = game:HttpGet(env.MX_SOURCE_URL or "https://raw.githubusercontent.com/yuewny/MX/main/Source.lua") end
 assert(source, "Could not load Source.lua")
 local MX = loadstring(source)()
 
