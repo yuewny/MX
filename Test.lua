@@ -18,9 +18,29 @@ local function near(a, b, tol, msg)
 	if math.abs(a - b) > (tol or 0.01) then error((msg or "expected near") .. ": got " .. tostring(a) .. ", wanted " .. tostring(b), 2) end
 end
 
-local Window = MX:CreateWindow({ Title = "MX Self Test", Size = Vector2.new(720, 460), Theme = "Obsidian", MobileButton = "Auto" })
+local Window = MX:CreateWindow({ Title = "MX Self Test", Size = Vector2.new(720, 460), MobileButton = "Auto" })
 local Tab = Window:AddTab({ Title = "Elements", Icon = "list" })
 local Sec = Tab:AddSection({ Title = "Test Elements", Icon = "list", Side = "Left" })
+
+check("default theme is Mono", function()
+	eq(MX.ThemeName, "Mono")
+end)
+
+check("gear: hide notifications switch", function()
+	assert(Window.Gear.notif, "hide notifications toggle missing")
+	Window.Gear.notif:Set(true)
+	eq(MX.NotifyEnabled, false, "notifications hidden")
+	local h = MX:Notify({ Type = "Info", Title = "Hidden" })
+	eq(type(h.Dismiss), "function")
+	Window.Gear.notif:Set(false)
+	eq(MX.NotifyEnabled, true, "notifications shown")
+end)
+
+check("settings: effect lives in Theme, no intensity or performance mode", function()
+	assert(MX.Options.effect, "effect dropdown missing")
+	eq(MX.Options.effect_intensity, nil, "intensity slider should be gone")
+	eq(MX.Options.perf_mode, nil, "performance mode should be gone")
+end)
 
 check("library: core API is present", function()
 	for _, name in ipairs({ "CreateWindow", "Notify", "SetTheme", "SaveConfig", "LoadConfig", "SetChangelog", "AddChangelog", "SetIgnoreFlags", "ResolveImage", "AddThemes", "SetLocked" }) do

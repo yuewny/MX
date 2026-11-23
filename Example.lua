@@ -30,7 +30,6 @@ local Window = MX:CreateWindow({
 	SubTitle = "MX UI v" .. MX.Version,
 	Size = Vector2.new(720, 460),
 	TabWidth = 170,
-	Theme = "Obsidian",
 	MobileButton = "Auto",
 	Effect = "Stars",
 	Home = true,

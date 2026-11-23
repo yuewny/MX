@@ -26,7 +26,7 @@ local MX = {
 	Options = {},
 	Themes = {},
 	ThemeOrder = {},
-	ThemeName = "Obsidian",
+	ThemeName = "Mono",
 	ThemeSweep = false,
 	TextScale = 1,
 	LogoId = 105865788976884,
@@ -183,11 +183,11 @@ MX:AddThemes({
 	["Mono"] = { Window = C3(12, 12, 12), Side = C3(7, 7, 7), Panel = C3(16, 16, 16), Card = C3(22, 22, 22), Element = C3(31, 31, 31), Hover = C3(43, 43, 43), Border = C3(64, 64, 64), Accent = C3(235, 235, 235), Text = C3(245, 245, 245), Sub = C3(140, 140, 140), Off = C3(50, 50, 50) },
 })
 do
-	local order = { "Obsidian", "Frost", "Violet", "Ocean", "Sunset", "Mono", "Rose", "Crimson", "Onyx", "Dark", "Darker", "Light", "Aqua", "Lagoon", "Amethyst", "Toxic", "Noir" }
+	local order = { "Mono", "Obsidian", "Frost", "Violet", "Ocean", "Sunset", "Rose", "Crimson", "Onyx", "Dark", "Darker", "Light", "Aqua", "Lagoon", "Amethyst", "Toxic", "Noir" }
 	table.insert(order, "Emerald")
 	MX.ThemeOrder = order
 	for k, v in pairs(MX.Themes) do Theme[k] = nil end
-	for k, v in pairs(MX.Themes["Obsidian"]) do Theme[k] = v end
+	for k, v in pairs(MX.Themes["Mono"]) do Theme[k] = v end
 end
 
 local Gui
@@ -1797,6 +1797,14 @@ function MX:SetNotifyUrl(url)
 	MX:_EnsureNotify()
 end
 
+function MX:SetNotificationsHidden(hidden)
+	MX.NotifyEnabled = not hidden
+	if hidden then
+		MX._notifyQueue = {}
+		if MX._notify and type(MX._notify.ClearAll) == "function" then pcall(MX._notify.ClearAll, MX._notify) end
+	end
+end
+
 function MX:Notify(o)
 	if MX.Dead or MX.NotifyEnabled == false then return MX._NotifyStub() end
 	o = type(o) == "table" and o or { Title = tostring(o) }
@@ -2398,7 +2406,7 @@ function MX:DeleteTheme(name)
 	MX.CustomThemes[name] = nil
 	MX.Themes[name] = nil
 	MX:_SaveThemes()
-	if MX.ThemeName == name then MX:SetTheme("Obsidian") end
+	if MX.ThemeName == name then MX:SetTheme("Mono") end
 	return true
 end
 function MX:SetAccent(c)
@@ -4152,7 +4160,7 @@ function Container:AddConfigManager(o)
 	gbtn(r2, "Refresh", nil, function() refresh() end)
 
 	local autoT
-	autoT = self:AddToggle({ Title = "Auto Load Config", Description = "Loads the selected config on launch", Style = "Switch", FireDefault = false, Flag = "_cfg_auto", Default = MX:GetAutoLoad() ~= nil, Callback = function(v)
+	autoT = self:AddToggle({ Title = "Auto Load Config", Style = "Switch", FireDefault = false, Flag = "_cfg_auto", Default = MX:GetAutoLoad() ~= nil, Callback = function(v)
 		if v then
 			if not sel then
 				autoT:Set(false, true)
@@ -4165,7 +4173,7 @@ function Container:AddConfigManager(o)
 		end
 		updateStatus()
 	end })
-	self:AddToggle({ Title = "Auto Save", Description = "Saves the loaded config when something changes", Style = "Switch", FireDefault = false, Flag = "_cfg_autosave", Default = MX.AutoSave, Callback = function(v)
+	self:AddToggle({ Title = "Auto Save", Style = "Switch", FireDefault = false, Flag = "_cfg_autosave", Default = MX.AutoSave, Callback = function(v)
 		if v and not MX.LoadedConfig and sel then MX.LoadedConfig = sel end
 		MX:SetAutoSave(v)
 		updateStatus()
@@ -4962,11 +4970,6 @@ function Window:SetEffect(name)
 	if MX.Options.effect and MX.Options.effect.Value ~= name then MX.Options.effect:Set(name, true) end
 end
 function Window:GetEffect() return self.Effect or "None" end
-function Window:SetEffectIntensity(v)
-	self.FXScale = math.clamp(tonumber(v) or 1, 0.3, 3)
-	if self.Effect and self.Effect ~= "None" then self:SetEffect(self.Effect) end
-end
-
 function Window:_Goto(e)
 	local c = e.cont
 	if c.Owner then c.Owner:Select() end
@@ -5267,7 +5270,7 @@ function MX:CreateWindow(o)
 	local gearMenu, gearFrame = MakeMenu("Quick Settings", 240)
 	local gr = {}
 	win.Gear = gr
-	gr.glass = gearMenu:AddToggle({ Title = "Glass", Description = "See-through window", Flag = "glass", Style = "Switch", Callback = function(v) MX:SetGlass(v) end })
+	gr.glass = gearMenu:AddToggle({ Title = "Glass", Flag = "glass", Style = "Switch", Callback = function(v) MX:SetGlass(v) end })
 	gr.wm = gearMenu:AddToggle({ Title = "Watermark", Flag = "watermark", Style = "Switch", Default = o.Watermark ~= false, Callback = function(v)
 		if v then MX:EnsureWatermark(win.TitleText) end
 		if MX.Watermark then MX.Watermark:SetVisible(v) end
@@ -5277,13 +5280,15 @@ function MX:CreateWindow(o)
 		if MX.KeyList then MX.KeyList:SetVisible(v) end
 	end })
 	gr.mob = gearMenu:AddToggle({ Title = "Mobile Button", Flag = "mobile_button", Style = "Switch", Callback = function(v) win:SetMobileButton(v) end })
-	gr.lock = gearMenu:AddToggle({ Title = "Lock UI", Description = "Stops windows and buttons from being moved", Flag = "ui_locked", Style = "Switch", Callback = function(v) MX:SetLocked(v) end })
+	gr.lock = gearMenu:AddToggle({ Title = "Lock UI", Flag = "ui_locked", Style = "Switch", Callback = function(v) MX:SetLocked(v) end })
+	gr.notif = gearMenu:AddToggle({ Title = "Hide Notifications", Flag = "hide_notifications", Style = "Switch", Callback = function(v) MX:SetNotificationsHidden(v) end })
 	Tap(gh, function()
 		gr.glass:Set(MX.Glass, true)
 		gr.wm:Set(MX.Watermark ~= nil and MX.Watermark.Visible or false, true)
 		gr.kl:Set(MX.KeyList ~= nil and MX.KeyList.Visible or false, true)
 		gr.mob:Set(win.MobileBtn ~= nil, true)
 		gr.lock:Set(MX.Locked, true)
+		gr.notif:Set(MX.NotifyEnabled == false, true)
 		ShowMenu(gearMenu, gearFrame, gb)
 	end)
 	local mb, mh = PaletteButton(hr, "minus", 5, bsz)
@@ -5353,7 +5358,6 @@ function MX:CreateWindow(o)
 	local fx = New("Frame", { Name = "FX", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ClipsDescendants = true, ZIndex = 3, Visible = false }, content)
 	New("UICorner", { CornerRadius = UDim.new(0, 10) }, fx)
 	win.FX = fx
-	win.FXScale = 1
 	win.PageHost = New("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ClipsDescendants = true }, content)
 
 	if o.Resizable ~= false then
@@ -6627,7 +6631,6 @@ end
 
 function Window:_BuildHome(h)
 	h = type(h) == "table" and h or {}
-	local win = self
 	if h.Category ~= false then self:AddCategory(h.Category or "Dashboard") end
 	local tab = self:AddTab({ Title = h.Title or "Home", Icon = h.Icon or "home" })
 	self.HomeTab = tab
@@ -6637,34 +6640,6 @@ function Window:_BuildHome(h)
 
 	local gc = tab:AddSection({ NoHeader = true, Side = "Full" })
 	gc:AddGameCard({ Title = h.GameTitle, Image = h.GameImage })
-
-	local ui = tab:AddSection({ Title = "Interface", Icon = "layout-dashboard", Side = "Full" })
-	local function mirror(key, v)
-		local g = win.Gear and win.Gear[key]
-		if g then g:Set(v, true) end
-	end
-	local wmT = ui:AddToggle({ Title = "Watermark", Description = "FPS, ping and time overlay", Default = MX.Watermark ~= nil and MX.Watermark.Visible == true, Callback = function(v)
-		if v then MX:EnsureWatermark(win.TitleText) end
-		if MX.Watermark then MX.Watermark:SetVisible(v) end
-		mirror("wm", v)
-	end })
-	ui:AddDropdown({ Title = "Watermark Position", Flag = "home_wm_pos", Values = { "TopRight", "TopLeft", "BottomRight", "BottomLeft" }, Default = "TopRight", Search = false, Callback = function(v)
-		if MX.Watermark then MX.Watermark:SetPosition(v) end
-	end })
-	local klT = ui:AddToggle({ Title = "Keybind List", Description = "Shows only the keybinds that are on", Default = MX.KeyList ~= nil and MX.KeyList.Visible == true, Callback = function(v)
-		if v then MX:EnsureKeyList() end
-		if MX.KeyList then MX.KeyList:SetVisible(v) end
-		mirror("kl", v)
-	end })
-	ui:AddToggle({ Title = "Notifications", Flag = "home_notify", Default = MX.NotifyEnabled ~= false, Callback = function(v) MX.NotifyEnabled = v end })
-
-	task.spawn(function()
-		while not MX.Dead and win.Main.Parent do
-			task.wait(0.5)
-			wmT:Set(MX.Watermark ~= nil and MX.Watermark.Visible == true, true)
-			klT:Set(MX.KeyList ~= nil and MX.KeyList.Visible == true, true)
-		end
-	end)
 	return tab
 end
 
@@ -6676,8 +6651,9 @@ function Window:AddSettingsTab(o)
 	local tab = self:AddTab({ Title = o.Title or "Settings", Icon = "settings", NoAutoSelect = true })
 	tab.Btn.LayoutOrder = 1000000
 	local theme = tab:AddSection({ Title = "Theme", Icon = "palette", Side = "Left" })
-	theme:AddDropdown({ Title = "Preset", Description = "Colors of the whole UI", Flag = "theme", Values = MX.ThemeOrder, Default = MX.ThemeName, Callback = function(n) MX:SetTheme(n) end })
+	theme:AddDropdown({ Title = "Preset", Flag = "theme", Values = MX.ThemeOrder, Default = MX.ThemeName, Callback = function(n) MX:SetTheme(n) end })
 	theme:AddColorPicker({ Title = "Accent", Flag = "accent", Default = MX.Theme.Accent, NoRainbow = true, Callback = function(c) MX:SetAccent(c) end })
+	theme:AddDropdown({ Title = "Effect", Flag = "effect", Values = MX.EffectList, Default = self:GetEffect(), Search = false, Callback = function(n) self:SetEffect(n) end })
 	local nameT = theme:AddTextbox({ Title = "Theme Name", Placeholder = "theme name", Flag = "_theme_name" })
 	local custom
 	theme:AddButton({ Title = "Create Theme", Callback = function()
@@ -6691,18 +6667,11 @@ function Window:AddSettingsTab(o)
 		end
 	end })
 	custom = theme:AddDropdown({ Title = "Custom Themes", Values = MX:GetCustomThemes(), Placeholder = "no themes", Flag = "_theme_custom", Callback = function(n) MX:SetTheme(n) end })
-	theme:AddButton({ Title = "Delete Theme", Description = "Hold to delete", Hold = 1, Callback = function()
+	theme:AddButton({ Title = "Delete Theme", Hold = 1, Callback = function()
 		local n = custom:Get()
 		if n then MX:DeleteTheme(n) end
 	end })
 	table.insert(MX.CustomListeners, function() custom:Refresh(MX:GetCustomThemes()) end)
-	local fx = tab:AddSection({ Title = "Effects", Icon = "wand-2", Side = "Left" })
-	fx:AddDropdown({ Title = "Effect", Description = "Animation over the menu", Flag = "effect", Values = MX.EffectList, Default = self:GetEffect(), Search = false, Callback = function(n) self:SetEffect(n) end })
-	fx:AddSlider({ Title = "Intensity", Flag = "effect_intensity", Min = 0.5, Max = 2, Increment = 0.1, Default = self.FXScale or 1, Callback = function(v) self:SetEffectIntensity(v) end })
-	fx:AddToggle({ Title = "Performance Mode", Description = "Fewer particles for smoother FPS", Flag = "perf_mode", Callback = function(v)
-		local sl = MX.Options.effect_intensity
-		self:SetEffectIntensity(v and 0.4 or (sl and sl.Value or 1))
-	end })
 	local cfg = tab:AddSection({ Title = "Configs", Icon = "folder", Side = "Right" })
 	cfg:AddConfigManager()
 	self._settingsTab = tab
