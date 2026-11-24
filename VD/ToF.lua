@@ -1,6 +1,6 @@
 return function(ctx)
 local CollectionService, CoreGui, IsDowned, PistolSection, Players, ReplicatedStorage, RunService, UserInputService, localPlayer, playerGui = ctx.CollectionService, ctx.CoreGui, ctx.IsDowned, ctx.PistolSection, ctx.Players, ctx.ReplicatedStorage, ctx.RunService, ctx.UserInputService, ctx.localPlayer, ctx.playerGui
-local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunObject, getTargetPosition, hookMobileButtons, isTargetVisible, setupMobileButton, startConnection, stopConnection, updateLaser
+local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunObject, getTargetPosition, hookMobileButtons, isTargetVisible, setupMobileButton, startConnection, stopConnection
     local fire
     do
         local okFire, fireRemote = pcall(function()
@@ -13,27 +13,12 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
             fire = {FireServer = function() end}
         end
     end
-    _G.MX.SilentShot = false
     local flag4 = false
-    local flag5 = false
-    local flag6 = false
-    local flag7 = true
     local flag8 = false
     local connection2 = nil
-    local part = nil
     local str = "Killer"
-    UDim2.new(0.5, -120, 0, 110)
-    local tbl8 = {}
 
     local tbl9 = {
-        PredictionEfficiency = 0.9,
-        LerpSmoothness = 0.45,
-        EnableJitter = false,
-        MaxJitterStuds = 0,
-        ProjectileSpeed = 500,
-        MaxLead = 0.3,
-        PingComp = true,
-        AccelPredict = true,
         FOVDot = 0.5,
         SkipDowned = true,
         TargetBody = "Torso",
@@ -97,9 +82,6 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
             table.insert(filterDescendantsInstances, arg3)
         end
 
-        if part then
-            table.insert(filterDescendantsInstances, part)
-        end
 
         raycastParams.FilterDescendantsInstances = filterDescendantsInstances
         local flag9 = workspace:Raycast(arg, n2.Unit * magnitude, raycastParams) == nil
@@ -137,98 +119,13 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
         return tbl10
     end
 
-    local StatsService = game:GetService("Stats")
-    local function getPingSeconds()
-        local ok, v = pcall(function()
-            return StatsService.Network.ServerStatsItem["Data Ping"]:GetValue()
-        end)
-        if ok and type(v) == "number" then
-            return math.clamp(v / 1000, 0, 0.4)
-        end
-        return 0
-    end
-
-    local function fn71(arg)
-        local humanoidRootPart = arg:FindFirstChild("HumanoidRootPart")
-        if not humanoidRootPart then
-            return Vector3.zero, Vector3.zero
-        end
-        local position = humanoidRootPart.Position
-        local now = tick()
-        local st = tbl8[arg]
-        if st and now - st.time > 0.3 then
-            st = nil
-        end
-        local vel, acc
-        if st then
-            local dt = now - st.time
-            if dt < 0.004 then
-                return st.vel, st.acc
-            end
-            local raw = (position - st.pos) / dt
-            if raw.Magnitude > 150 then
-                vel = humanoidRootPart.AssemblyLinearVelocity
-                acc = Vector3.zero
-            else
-                vel = st.vel:Lerp(raw, tbl9.LerpSmoothness)
-                acc = st.acc:Lerp((vel - st.vel) / dt, 0.15)
-                if acc.Magnitude > 60 then
-                    acc = acc.Unit * 60
-                end
-            end
-        else
-            vel = humanoidRootPart.AssemblyLinearVelocity
-            acc = Vector3.zero
-        end
-
-        pcall(function()
-            local hum = arg:FindFirstChildOfClass("Humanoid")
-            if hum and hum.FloorMaterial ~= Enum.Material.Air then
-                vel = Vector3.new(vel.X, 0, vel.Z)
-                acc = Vector3.new(acc.X, 0, acc.Z)
-            end
-        end)
-        tbl8[arg] = {pos = position, vel = vel, acc = acc, time = now}
-        return vel, acc
-    end
-
-    local function fn72(arg, arg2, arg3, arg4)
-        local speed = math.max(arg4 or tbl9.ProjectileSpeed or 500, 1)
-        local position = arg2.Position
-        if (position - arg).Magnitude < 8 then
-            return position
-        end
-        local vel, acc = fn71(arg3)
-        local eff = tbl9.PredictionEfficiency
-        local extra = tbl9.PingComp and getPingSeconds() * 0.5 or 0
-        local useAcc = tbl9.AccelPredict
-        local t = (position - arg).Magnitude / speed
-        local predicted = position
-        for _ = 1, 4 do
-            local lead = math.min(t + extra, tbl9.MaxLead)
-            local offset = vel * lead
-            if useAcc then
-                offset = offset + acc * (0.5 * lead * lead)
-            end
-            predicted = position + offset * eff
-            t = (predicted - arg).Magnitude / speed
-        end
-        if tbl9.EnableJitter then
-            predicted = predicted + Vector3.new((math.random() - 0.5) * tbl9.MaxJitterStuds, (math.random() - 0.5) * (tbl9.MaxJitterStuds / 2), (math.random() - 0.5) * tbl9.MaxJitterStuds)
-        end
-        return predicted
-    end
-
     getTargetPosition = function()
-        local v34 = getGunObject()
         local character = localPlayer.Character
-        if not v34 or not character then
-            return nil, nil, nil, nil
-        end
-        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
         if not humanoidRootPart then
             return nil, nil, nil, nil
         end
+        local v34 = getGunObject() or humanoidRootPart
         local position = humanoidRootPart.Position
         local n3 = nil
 
@@ -253,10 +150,10 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
 
         local function fn73(arg, arg2)
             local position2 = arg.Position
-            if flag7 and not isTargetVisible(n3, position2, arg2) then
+            if not isTargetVisible(n3, position2, arg2) then
                 return nil, nil, nil, nil
             end
-            local v35 = getGunObject()
+            local v35 = getGunObject() or humanoidRootPart
             local position3 = n3
 
             pcall(function()
@@ -271,15 +168,7 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
                 end
             end)
 
-            if (position2 - position3).Magnitude < 8 then
-                return (position2 - position3).Unit, v35, position3, position2
-            end
-
-            if not flag5 then
-                return (position2 - position3).Unit, v35, position3, position2
-            end
-            local v36 = fn72(position3, arg, arg2, tbl9.ProjectileSpeed)
-            return (v36 - position3).Unit, v35, position3, v36
+            return (position2 - position3).Unit, v35, position3, position2
         end
 
         local cam = workspace.CurrentCamera
@@ -339,34 +228,6 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
             end
         end
         return nil, nil, nil, nil
-    end
-
-    updateLaser = function(arg, arg2)
-        if not part then
-            part = Instance.new("Part")
-            part.Name = "ToFLaser"
-            part.Anchored = true
-            part.CanCollide = false
-            part.CanTouch = false
-            part.CastShadow = false
-            part.Material = Enum.Material.Neon
-            local color = Color3.fromRGB(255, 50, 50)
-            part.Color = color
-            part.Parent = workspace
-        end
-
-        local vector = Vector3.new(0.05, 0.05, (arg2 - arg).Magnitude)
-        part.Size = vector
-        local cframe = CFrame.new((arg + arg2) / 2, arg2)
-        part.CFrame = cframe
-        part.Transparency = 0
-    end
-
-    clearLaser = function()
-        if part then
-            part:Destroy()
-            part = nil
-        end
     end
 
     local tbl11 = {}
@@ -465,66 +326,22 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
         end)
     end)
 
-    doShoot = function()
-        if not flag4 or not flag8 then
-            return
+    local function aimUnit()
+        local _, _, muzzle, aimPoint = getTargetPosition()
+        if muzzle and aimPoint and (aimPoint - muzzle).Magnitude > 0.01 then
+            return (aimPoint - muzzle).Unit
         end
-        local character = localPlayer.Character
-        if character and _G.MX.AimConfig.Pistol_BlockKnocked and (IsDowned(character) or character:GetAttribute("IsCarried")) then
-            return
-        end
-        if character then
-            local hum = character:FindFirstChildOfClass("Humanoid")
-            if CollectionService:HasTag(character, "Silenced") or localPlayer:GetAttribute("IsDead") or (hum and (hum.Health <= 0 or hum.Health < hum.MaxHealth * 0.5)) then
-                return
-            end
-        end
-        local v34, v35, v36, v37 = getTargetPosition()
-        if not v34 or not v35 or not v37 or not v36 then
-            return
-        end
-        local unit = (v37 - v36).Unit
+        return nil
+    end
 
-        local item = v35
-        if typeof(item) == "Instance" and character then
-            while item.Parent and item.Parent ~= character do
-                item = item.Parent
-            end
-            if item.Parent ~= character then
-                item = character:FindFirstChild("Twist of Fate")
-            end
+    doShoot = function(item, step)
+        local unit = aimUnit()
+        if not unit or typeof(item) ~= "Instance" then
+            return false
         end
-        if typeof(item) ~= "Instance" then
-            return
-        end
-        v35 = item
-
-        if v35:GetAttribute("tofState") == "cooldown" then
-            return
-        end
-        local shots = v35:GetAttribute("shots")
-        if (shots == nil and 3 or shots) <= 0 then
-            return
-        end
-        if tick() - (_G.MX.LastToFShot or 0) < 0.65 then
-            return
-        end
-        _G.MX.LastToFShot = tick()
-
-        if not _G.MX.ToFStep then
-            _G.MX.ToFStep = 3
-            pcall(function()
-                local tuning = require(ReplicatedStorage.Modules.Items.TwistOfFate.TwistoffateTuning)
-                if type(tuning.STEPS) == "table" and #tuning.STEPS >= 1 then
-                    _G.MX.ToFStep = #tuning.STEPS
-                end
-            end)
-        end
-        _G.MX.SilentShot = true
-        pcall(function()
-            fire:FireServer(v35, unit, _G.MX.ToFStep)
+        return pcall(function()
+            fire:FireServer(item, unit, step)
         end)
-        _G.MX.SilentShot = false
     end
 
     startConnection = function()
@@ -550,15 +367,7 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
                         local cframe = CFrame.lookAt(workspace.CurrentCamera.CFrame.Position, v37)
                         workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(cframe, 0.15)
                     end
-
-                    if flag6 and v36 and v37 then
-                        updateLaser(v36, v37)
-                    end
-                elseif part then
-                    part.Transparency = 1
                 end
-            elseif part then
-                part.Transparency = 1
             end
         end)
     end
@@ -569,10 +378,7 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
             connection2 = nil
         end
 
-        clearLaser()
     end
-
-    local udim2 = UDim2.new(0.5, -82, 0, 30)
     local v34 = nil
     local connection3 = nil
 
@@ -596,6 +402,8 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
             activeTxt = Color3.fromRGB(255, 210, 100),
         },
     }
+
+    local udim2 = UDim2.new(0.5, -82, 0, 30)
 
     createTargetSelectorUI = function()
         if not CoreGui then
@@ -831,133 +639,33 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
         end
     end
 
-    local ToF = {remote = fire, wallCheck = true, status = "ready", last = 0, blockedAt = 0, blockedMsg = ""}
+    local ToF = {remote = fire}
     _G.MX.ToF = ToF
 
-    local TOF_FULL = 3
-    pcall(function()
-        local tuning = require(ReplicatedStorage.Modules.Items.TwistOfFate.TwistoffateTuning)
-        local last = tuning.STEPS[#tuning.STEPS]
-        if last and type(last.at) == "number" and last.at > 0 then
-            TOF_FULL = last.at
-        end
-    end)
+    local releaseMode = true
+    local pending = nil
 
-    local function tofItem(char, obj)
-        if typeof(obj) ~= "Instance" or not char or not obj:IsDescendantOf(char) then
+    function ToF.onFire(item, look, step)
+        if not flag4 or typeof(item) ~= "Instance" then
             return nil
         end
-        local item = obj
-        while item.Parent and item.Parent ~= char do
-            item = item.Parent
-        end
-        return item
-    end
-
-    local function tofMuzzle(char)
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then
-            return nil
-        end
-        local from = hrp.Position + Vector3.new(0, 1.373, 0)
-        local to = (hrp.CFrame * CFrame.new(0.7, 1.373, -2.5)).Position
-        local delta = to - from
-        if delta.Magnitude <= 0 then
-            return to
-        end
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        params.FilterDescendantsInstances = {char}
-        params.IgnoreWater = true
-        local hit = workspace:Raycast(from, delta, params)
-        if hit then
-            return hit.Position - delta.Unit * 0.5
-        end
-        return to
-    end
-
-    local function killerOf(inst)
-        local model = inst and inst:FindFirstAncestorOfClass("Model")
-        local plr = model and Players:GetPlayerFromCharacter(model)
-        if plr and plr ~= localPlayer and plr.Team and plr.Team.Name == "Killer" then
-            return model
-        end
-        return nil
-    end
-
-    local function tofClearHit(origin, dir)
-        if typeof(dir) ~= "Vector3" or dir.Magnitude < 0.01 then
+        if releaseMode and flag8 then
+            pending = {item = item, step = step, at = os.clock()}
             return false
         end
-        local mine = localPlayer.Character
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        params.IgnoreWater = true
-        local list = {mine}
-        for _ = 1, 12 do
-            params.FilterDescendantsInstances = list
-            local hit = workspace:Raycast(origin, dir.Unit * 1000, params)
-            if not hit then
-                return false
-            end
-            if killerOf(hit.Instance) then
-                return true
-            end
-            if hit.Instance.Transparency <= 0.01 and hit.Instance.CanQuery then
-                return false
-            end
-            table.insert(list, hit.Instance)
-        end
-        return false
-    end
-
-    local function invalidReason(char, obj)
-        local item = tofItem(char, obj)
-        if not item then
-            return "not equipped"
-        end
-        if item:GetAttribute("tofState") == "cooldown" then
-            return "cooldown"
-        end
-        local shots = item:GetAttribute("shots")
-        if (shots == nil and 1 or shots) <= 0 then
-            return "no shots"
-        end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then
-            return "dead"
-        end
-        if CollectionService:HasTag(char, "Silenced") or localPlayer:GetAttribute("IsDead") then
-            return "silenced"
-        end
-        if char:GetAttribute("Trapped") or char:GetAttribute("IsHooked") or char:GetAttribute("IsCarried") then
-            return "busy"
-        end
-        return nil
-    end
-
-    function ToF.onFire(obj, look)
-        local char = localPlayer.Character
-        if not ToF.wallCheck then
+        local unit = aimUnit()
+        if not unit then
             return nil
         end
-        local reason = invalidReason(char, obj)
-        if not reason then
-            local cam = workspace.CurrentCamera
-            local origin = tofMuzzle(char) or (cam and cam.CFrame.Position)
-            if not (origin and tofClearHit(origin, look)) then
-                reason = "no target"
-            end
+        return item, unit, step
+    end
+
+    local function releaseShot()
+        local queued = pending
+        pending = nil
+        if queued and os.clock() - queued.at < 4 then
+            doShoot(queued.item, queued.step)
         end
-        if reason then
-            ToF.status = "blocked: " .. reason
-            ToF.blockedAt = os.clock()
-            ToF.blockedMsg = reason
-            return false
-        end
-        ToF.last = os.clock()
-        ToF.status = "shot allowed"
-        return nil
     end
 
     PistolSection:AddToggle("Silent Aim ToF", false, function(on)
@@ -970,6 +678,11 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
             destroyTargetSelectorUI()
         end
     end, {Flag = "ToFSilentAim"})
+
+    PistolSection:AddDropdown("TOF Fire Mode", {"Lepas", "Klik"}, false, function(value)
+        releaseMode = value == "Lepas"
+        pending = nil
+    end, {Default = "Lepas", Flag = "ToFFireMode"})
 
     local function flashEquipped()
         local char = localPlayer.Character
@@ -1008,15 +721,11 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
 
     UserInputService.InputEnded:Connect(function(input)
         if itemInput(input) then
-            if flag8 and flag4 and not flashEquipped() then
-                doShoot()
-            end
             flag8 = false
-            _G.MX.PistolHold = false
-
-            if part then
-                part.Transparency = 1
+            if flag4 and not flashEquipped() then
+                releaseShot()
             end
+            _G.MX.PistolHold = false
         end
     end)
 
@@ -1045,13 +754,11 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
 
         guiMob.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                doShoot()
                 flag8 = false
-                _G.MX.PistolHold = false
-
-                if part then
-                    part.Transparency = 1
+                if flag4 then
+                    releaseShot()
                 end
+                _G.MX.PistolHold = false
             end
         end)
     end
@@ -1082,8 +789,6 @@ local GetSCPs, clearLaser, createTargetSelectorUI, destroyTargetSelectorUI, doSh
     setupMobileButton()
 
     localPlayer.CharacterAdded:Connect(function(character)
-        clearLaser()
-        tbl8 = {}
         tbl10 = {}
         n2 = 0
         flag8 = false
