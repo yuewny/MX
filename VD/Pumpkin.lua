@@ -298,7 +298,7 @@ local CollectionService, PumpkinCard, ReplicatedStorage, localPlayer = ctx.Colle
                             local e = esp[pumpkin]
                             if not e then
                                 local hl = Instance.new("Highlight")
-                                hl.FillColor = Color3.fromRGB(255, 140, 0)
+                                hl.FillColor = Color3.fromRGB(170, 255, 0)
                                 hl.OutlineColor = Color3.fromRGB(255, 255, 255)
                                 hl.FillTransparency = 0.45
                                 hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -313,7 +313,7 @@ local CollectionService, PumpkinCard, ReplicatedStorage, localPlayer = ctx.Colle
                                 local label = Instance.new("TextLabel")
                                 label.Size = UDim2.fromScale(1, 1)
                                 label.BackgroundTransparency = 1
-                                label.TextColor3 = Color3.fromRGB(255, 170, 40)
+                                label.TextColor3 = Color3.fromRGB(190, 255, 60)
                                 label.TextStrokeTransparency = 0.4
                                 label.Font = Enum.Font.GothamBold
                                 label.TextSize = 13

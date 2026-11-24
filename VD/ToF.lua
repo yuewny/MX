@@ -642,14 +642,13 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
     local ToF = {remote = fire}
     _G.MX.ToF = ToF
 
-    local releaseMode = true
     local pending = nil
 
     function ToF.onFire(item, look, step)
         if not flag4 or typeof(item) ~= "Instance" then
             return nil
         end
-        if releaseMode and flag8 then
+        if flag8 then
             pending = {item = item, step = step, at = os.clock()}
             return false
         end
@@ -668,7 +667,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
         end
     end
 
-    PistolSection:AddToggle("Silent Aim ToF", false, function(on)
+    PistolSection:AddToggle("Silent Aim TOF", false, function(on)
         flag4 = on
         if on then
             createTargetSelectorUI()
@@ -678,11 +677,6 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
             destroyTargetSelectorUI()
         end
     end, {Flag = "ToFSilentAim"})
-
-    PistolSection:AddDropdown("TOF Fire Mode", {"Lepas", "Klik"}, false, function(value)
-        releaseMode = value == "Lepas"
-        pending = nil
-    end, {Default = "Lepas", Flag = "ToFFireMode"})
 
     local function flashEquipped()
         local char = localPlayer.Character

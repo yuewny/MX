@@ -161,7 +161,7 @@ do
         end
     end)
 
-    SilentCard:AddToggle("Silent Flask (Cure)", false, function(on)
+    SilentCard:AddToggle("Silent Flask", false, function(on)
         KA.flaskOn = on
     end, {Flag = "SilentAimFlask"})
 
@@ -215,7 +215,7 @@ do
         return delta.Unit
     end
 
-    SilentCard:AddToggle("Silent Chain (Butcher)", false, function(on)
+    SilentCard:AddToggle("Silent Chain", false, function(on)
         KA.chainOn = on
     end, {Flag = "SilentAimChain"})
 
@@ -244,7 +244,7 @@ do
         end
     end)
 
-    KillerAbilityCard:AddToggle("Aim Lock (The Hidden) - hold skill key", false, function(on)
+    KillerAbilityCard:AddToggle("Aim Lock (Hidden)", false, function(on)
         KA.hiddenOn = on
         HL.target = nil
     end, {Flag = "AimLockHidden"})

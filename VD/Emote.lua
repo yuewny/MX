@@ -85,17 +85,17 @@ return function(ctx)
         end)
     end
 
-    local dropdown = ExtraCard:AddDropdown("Emote", {"(memuat...)"}, false, function(value)
+    local dropdown = ExtraCard:AddDropdown("Emote", {"Loading..."}, false, function(value)
         selected = value
     end)
 
-    ExtraCard:AddButton("Play Emote", function()
+    ExtraCard:AddButton("Play", function()
         if selected and emotes[selected] then
             playEmote(selected)
         end
     end)
-    ExtraCard:AddButton("Stop Emote", stopEmote)
-    ExtraCard:AddToggle("Stop Saat Bergerak", true, function(on)
+    ExtraCard:AddButton("Stop", stopEmote)
+    ExtraCard:AddToggle("Stop On Move", true, function(on)
         stopOnMove = on
     end, {Flag = "EmoteStopOnMove"})
 

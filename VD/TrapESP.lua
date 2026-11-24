@@ -106,7 +106,7 @@ local CollectionService, localPlayer = ctx.CollectionService, ctx.localPlayer
                                     holder = model:FindFirstAncestor("BearTrap") or model
                                 end
                                 local armed = holder:GetAttribute("Armed") ~= false and holder:GetAttribute("Triggered") ~= true
-                                local color = armed and Color3.fromRGB(255, 70, 70) or Color3.fromRGB(255, 190, 60)
+                                local color = armed and Color3.fromRGB(60, 110, 255) or Color3.fromRGB(150, 150, 150)
                                 local e = T.items[model]
                                 if not e or not e.hl.Parent or not e.gui.Parent then
                                     clear(model)
