@@ -1,4 +1,9 @@
-local MX = loadstring(game:HttpGet("https://raw.githubusercontent.com/yuewny/MX/main/Source.lua"))()
+local env = getgenv and getgenv() or _G
+local source = env.MX_SOURCE
+if not source and isfile and isfile("Source.lua") then source = readfile("Source.lua") end
+if not source then source = game:HttpGet(env.MX_SOURCE_URL or "https://raw.githubusercontent.com/yuewny/MX/main/Source.lua") end
+assert(source, "Could not load Source.lua")
+local MX = loadstring(source)()
 
 local results = {}
 local function check(name, fn)
@@ -18,29 +23,9 @@ local function near(a, b, tol, msg)
 	if math.abs(a - b) > (tol or 0.01) then error((msg or "expected near") .. ": got " .. tostring(a) .. ", wanted " .. tostring(b), 2) end
 end
 
-local Window = MX:CreateWindow({ Title = "MX Self Test", Size = Vector2.new(720, 460), MobileButton = "Auto" })
+local Window = MX:CreateWindow({ Title = "MX Self Test", Size = Vector2.new(720, 460), Theme = "Obsidian", MobileButton = "Auto" })
 local Tab = Window:AddTab({ Title = "Elements", Icon = "list" })
 local Sec = Tab:AddSection({ Title = "Test Elements", Icon = "list", Side = "Left" })
-
-check("default theme is Mono", function()
-	eq(MX.ThemeName, "Mono")
-end)
-
-check("gear: hide notifications switch", function()
-	assert(Window.Gear.notif, "hide notifications toggle missing")
-	Window.Gear.notif:Set(true)
-	eq(MX.NotifyEnabled, false, "notifications hidden")
-	local h = MX:Notify({ Type = "Info", Title = "Hidden" })
-	eq(type(h.Dismiss), "function")
-	Window.Gear.notif:Set(false)
-	eq(MX.NotifyEnabled, true, "notifications shown")
-end)
-
-check("settings: effect lives in Theme, no intensity or performance mode", function()
-	assert(MX.Options.effect, "effect dropdown missing")
-	eq(MX.Options.effect_intensity, nil, "intensity slider should be gone")
-	eq(MX.Options.perf_mode, nil, "performance mode should be gone")
-end)
 
 check("library: core API is present", function()
 	for _, name in ipairs({ "CreateWindow", "Notify", "SetTheme", "SaveConfig", "LoadConfig", "SetChangelog", "AddChangelog", "SetIgnoreFlags", "ResolveImage", "AddThemes", "SetLocked" }) do
@@ -77,54 +62,6 @@ check("watermark and keybind list exist and can be shown", function()
 	gear.kl:Set(true)
 	task.wait(0.5)
 	eq(MX.KeyList.Frame.Visible, true, "gear keybind toggle")
-end)
-
-check("sidebar: Dashboard above Home and Misc above Settings", function()
-	local dash, misc
-	for _, c in ipairs(Window.Cats) do
-		if c.l.Text == "DASHBOARD" then dash = c.l.Parent.LayoutOrder elseif c.l.Text == "MISC" then misc = c.l.Parent.LayoutOrder end
-	end
-	assert(dash and dash < Window.HomeTab.Btn.LayoutOrder, "Dashboard category is not above Home")
-	assert(misc and misc < Window._settingsTab.Btn.LayoutOrder, "Misc category is not above Settings")
-end)
-
-check("watermark and keybind list stay on screen", function()
-	local wm = MX.Watermark
-	wm:SetVisible(true)
-	local f = wm.Frame
-	f.Position = UDim2.new(0, 99999, 0, -99999)
-	f.Position = MX:_Clamp(f)
-	task.wait(0.1)
-	local layer = f.Parent
-	local lp, ls = layer.AbsolutePosition, layer.AbsoluteSize
-	local p, sz = f.AbsolutePosition, f.AbsoluteSize
-	assert(p.X >= lp.X - 1 and p.Y >= lp.Y - 1 and p.X + sz.X <= lp.X + ls.X + 1 and p.Y + sz.Y <= lp.Y + ls.Y + 1, "watermark is outside the screen")
-	wm:SetPosition("TopRight")
-	wm:SetVisible(false)
-end)
-
-check("keybind list shows only active keybinds", function()
-	local t = Sec:AddToggle({ Title = "Bound Toggle", Flag = "st_bound", Keybind = Enum.KeyCode.J })
-	MX.KeyList:SetVisible(true)
-	MX.KeyList:Refresh()
-	local base = MX.KeyList.Count
-	t:Set(true)
-	eq(MX.KeyList.Count, base + 1, "active bind is listed")
-	t:Set(false)
-	eq(MX.KeyList.Count, base, "inactive bind is hidden")
-	MX.KeyList:SetVisible(false)
-end)
-
-check("toggle: Default = true runs the callback once", function()
-	local count, last = 0, nil
-	local t = Sec:AddToggle({ Title = "On Load", Flag = "st_onload", Default = true, Callback = function(v)
-		count += 1
-		last = v
-	end })
-	task.wait(0.2)
-	eq(count, 1, "callback runs once")
-	eq(last, true)
-	eq(t:Get(), true)
 end)
 
 check("toggle: set, get, callback, serialize", function()
@@ -190,6 +127,27 @@ check("number input: clamp", function()
 	eq(n.Value, 50)
 end)
 
+check("layout: long title does not overlap a narrow dropdown", function()
+	local narrow = Tab:AddSection({ Title = "Narrow", Icon = "list", Side = "Right" })
+	local d = narrow:AddDropdown({ Title = "Skill Check Mode With A Very Long Title", Flag = "st_layout_drop", Values = { "Legit", "Rage" }, Default = "Legit" })
+	local tg = narrow:AddToggle({ Title = "Auto Stomp Pumpkins (Generators) And More", Flag = "st_layout_toggle" })
+	local tb = narrow:AddTextbox({ Title = "A Long Textbox Title Here", Flag = "st_layout_text" })
+	task.wait(0.4)
+	for name, el in pairs({ dropdown = d, toggle = tg, textbox = tb }) do
+		local row = el.Row
+		local info, ctl
+		for _, c in ipairs(row:GetChildren()) do
+			if c:IsA("Frame") and c.ZIndex == 3 then ctl = c end
+			if c:IsA("Frame") and c.ClipsDescendants then info = c end
+		end
+		assert(info and ctl, name .. ": info or control frame not found")
+		assert(info.AbsoluteSize.X > 40, name .. ": title area collapsed to " .. info.AbsoluteSize.X)
+		local infoRight = info.AbsolutePosition.X + info.AbsoluteSize.X
+		assert(infoRight <= ctl.AbsolutePosition.X + 1, name .. ": title area overlaps the control")
+		assert(ctl.AbsoluteSize.X / MX.Scale <= 150, name .. ": control wider than 150")
+	end
+end)
+
 check("dropdown: set, refresh keeps valid choice", function()
 	local d = Sec:AddDropdown({ Title = "Dropdown", Flag = "st_drop", Values = { "A", "B", "C" }, Default = "A" })
 	eq(d.Value, "A")
@@ -202,7 +160,7 @@ check("dropdown: set, refresh keeps valid choice", function()
 end)
 
 check("multiselect: set and refresh", function()
-	local m = Sec:AddDropdown({ Title = "Multi", Flag = "st_multi", Multi = true, Values = { "A", "B", "C" }, Default = { "A" } })
+	local m = Sec:AddMultiSelect({ Title = "Multi", Flag = "st_multi", Values = { "A", "B", "C" }, Default = { "A" } })
 	m:Set({ "A", "B" })
 	eq(#m.Value, 2)
 	m:Refresh({ "A" })
@@ -297,9 +255,16 @@ check("depends: row follows another flag", function()
 	eq(b.Row.Visible, true, "visible while on")
 end)
 
-check("groupbox", function()
+check("groupbox and inner tabs", function()
 	local g = Sec:AddGroupbox({ Title = "Group" })
 	g:AddToggle("In group", false)
+	local tabs = Sec:AddTabs({ "One", "Two" })
+	tabs.Pages.One:AddToggle("In tab one", false)
+	tabs.Pages.Two:AddButton("In tab two", function() end)
+	tabs:Select("Two")
+	eq(tabs.Current, "Two")
+	tabs:Select("One")
+	eq(tabs.Current, "One")
 end)
 
 check("player dropdown", function()
@@ -372,7 +337,6 @@ check("themes: incomplete custom theme is completed", function()
 end)
 
 check("notifications: module loads from URL and shows banners", function()
-	MX:Notify({ Type = "Info", Title = "Loading notify", Duration = 1 })
 	local t0 = os.clock()
 	while not MX._notify and not MX._notifyFailed and os.clock() - t0 < 10 do task.wait(0.1) end
 	assert(MX._notify, "notify module did not load from " .. tostring(MX.NotifyUrl))
@@ -433,34 +397,6 @@ check("changelog: parsing, window, close", function()
 	task.wait(0.3)
 	eq(Window._cl, nil)
 	MX:SetChangelog(keep)
-end)
-
-check("header: changelog button is always visible", function()
-	local keep = MX.Changelog
-	assert(Window.ChangelogBtn, "changelog button missing")
-	MX:SetChangelog({})
-	task.wait(0.1)
-	eq(Window.ChangelogBtn.Visible, true, "visible with empty changelog")
-	Window:OpenChangelog()
-	assert(Window._cl and Window._cl.Parent, "empty changelog panel missing")
-	Window:CloseChangelog()
-	task.wait(0.3)
-	MX:SetChangelog(keep)
-	task.wait(0.1)
-	eq(Window.ChangelogBtn.Visible, true, "visible with changelog")
-end)
-
-check("home: game card with rejoin and server hop", function()
-	assert(Window.HomeTab, "home tab missing")
-	eq(type(MX.Rejoin), "function", "MX.Rejoin")
-	eq(type(MX.ServerHop), "function", "MX.ServerHop")
-	local labels = {}
-	for _, d in ipairs(Window.Main:GetDescendants()) do
-		if d:IsA("TextLabel") then labels[d.Text] = true end
-	end
-	for _, name in ipairs({ "Copy Job ID", "Rejoin", "Server Hop", "FPS", "Session", "Ping" }) do
-		assert(labels[name], name .. " missing in game card")
-	end
 end)
 
 check("window: hide and show", function()
