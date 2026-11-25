@@ -527,6 +527,16 @@ end)
 
 local lib = MX_BUILD()
 
+local function MXTrack(connection)
+    pcall(lib.API.Track, function()
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end)
+    return connection
+end
+getgenv().MXHUB_Track = MXTrack
+
 local MX = {}
 do
     local BASE = "https://raw.githubusercontent.com/yuewny/MX/main/VD/"
@@ -1115,7 +1125,7 @@ do
                 self.faceToken = (self.faceToken or 0) + 1
                 local token, started, lock = self.faceToken, tick(), self.lockDuration or 0.6
                 local conn
-                conn = RunService.Heartbeat:Connect(function()
+                conn = MXTrack(RunService.Heartbeat:Connect(function()
                     if self.faceToken ~= token or tick() - started > lock or not (self.rootPart and self.rootPart.Parent and root.Parent) then
                         conn:Disconnect()
                         return
@@ -1125,7 +1135,7 @@ do
                     if (g - p).Magnitude > 0.3 then
                         self.rootPart.CFrame = CFrame.lookAt(p, g)
                     end
-                end)
+                end))
                 return
             end
             return original(self, ...)
@@ -1312,11 +1322,11 @@ do
                 local tween = TweenService:Create(gradient, TweenInfo.new(arg, Enum.EasingStyle.Linear), {Offset = Vector2.new(0, 0.25)})
                 tween:Play()
 
-                tween.Completed:Connect(function()
+                MXTrack(tween.Completed:Connect(function()
                     if not _G.MX.State.ParryCooldown then
                         ParryHUD.SetColor(Color3.fromRGB(255, 255, 255))
                     end
-                end)
+                end))
             end
         end
     end
@@ -1341,7 +1351,7 @@ do
             return
         end
 
-        ParryHUD.rescanConn = playerGui2.ChildAdded:Connect(function(child)
+        ParryHUD.rescanConn = MXTrack(playerGui2.ChildAdded:Connect(function(child)
             local name = child.Name
 
             if name == "Survivor" or name == "Survivor-con" or name == "Survivor-mob" then
@@ -1352,7 +1362,7 @@ do
                     ParryHUD.SetColor(ParryHUD.cachedIconColor)
                 end
             end
-        end)
+        end))
 
         task.spawn(function()
             local n = 0
@@ -1366,14 +1376,14 @@ do
 
     ParryHUD.SetupWatcher()
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(1.5)
         ParryHUD.Scan()
 
         if _G.MX.State.ParryCooldown and ParryHUD.cachedIconColor then
             ParryHUD.SetColor(ParryHUD.cachedIconColor)
         end
-    end)
+    end))
 
     ListenToParryResult = function()
         task.spawn(function()
@@ -1382,7 +1392,7 @@ do
             local parryResult = parryingDagger and parryingDagger:WaitForChild("parryResult", 5)
 
             if parryResult then
-                parryResult.OnClientEvent:Connect(function(arg, arg2)
+                MXTrack(parryResult.OnClientEvent:Connect(function(arg, arg2)
                     local num = tonumber(arg2)
                     local n = num or (arg == true and 90 or 60)
                     _G.MX.State.ParryCooldown = true
@@ -1398,7 +1408,7 @@ do
                         _G.MX.State.ParryCooldown = false
                         ParryHUD.SetColor(Color3.fromRGB(255, 255, 255))
                     end)
-                end)
+                end))
             end
         end)
     end
@@ -1420,20 +1430,20 @@ do
             return
         end
 
-        humanoid.ChildAdded:Connect(function(child)
+        MXTrack(humanoid.ChildAdded:Connect(function(child)
             if child:IsA("Animator") then
                 _G.MX.AttachedParry[arg] = nil
                 AttachParrySensor(arg)
             end
-        end)
+        end))
 
-        arg.AncestryChanged:Connect(function(child, parent)
+        MXTrack(arg.AncestryChanged:Connect(function(child, parent)
             if not parent then
                 _G.MX.AttachedParry[arg] = nil
             end
-        end)
+        end))
 
-        animator2.AnimationPlayed:Connect(function(arg2)
+        MXTrack(animator2.AnimationPlayed:Connect(function(arg2)
             local animation = arg2.Animation
             local animationId = animation and arg2.Animation.AnimationId or ""
             local match = animationId:match("%d+")
@@ -1511,11 +1521,11 @@ do
                 local connection = nil
                 local now = os.clock()
 
-                connection = RunService.Heartbeat:Connect(function()
+                connection = MXTrack(RunService.Heartbeat:Connect(function()
                     if (os.clock() - now >= 0.85 or fn12()) and connection then
                         connection:Disconnect()
                     end
-                end)
+                end))
             else
                 local n = _G.MX.ParryConfig.ParryRadius
 
@@ -1526,7 +1536,7 @@ do
                 local now = os.clock()
                 local connection = nil
 
-                connection = RunService.Heartbeat:Connect(function()
+                connection = MXTrack(RunService.Heartbeat:Connect(function()
                     if os.clock() - now < 0.6 and not _G.MX.State.ParryCooldown and humanoidRootPart and humanoidRootPart2 and humanoidRootPart.Parent and humanoidRootPart2.Parent and not IsDowned(character) then
                         if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude <= n and true then
                             ExecuteParry(humanoidRootPart2)
@@ -1542,9 +1552,9 @@ do
                     if connection then
                         connection:Disconnect()
                     end
-                end)
+                end))
             end
-        end)
+        end))
     end
 
     TryAttachParry = function(arg)
@@ -1558,13 +1568,13 @@ do
             return
         end
 
-        arg.CharacterAdded:Connect(function()
+        MXTrack(arg.CharacterAdded:Connect(function()
             TryAttachParry(arg)
-        end)
+        end))
 
-        arg:GetPropertyChangedSignal("Team"):Connect(function()
+        MXTrack(arg:GetPropertyChangedSignal("Team"):Connect(function()
             TryAttachParry(arg)
-        end)
+        end))
 
         if arg.Character then
             TryAttachParry(arg)
@@ -1611,14 +1621,14 @@ do
         end
     end
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(1)
 
         if _G.MX.AutoParryCustom.GuiVisible and _G.MX.AutoParryCustom.Gui then
             _G.MX.AutoParryCustom.Gui.Enabled = true
             UpdateCustomParryGUI(_G.MX.ParryConfig.AutoParry)
         end
-    end)
+    end))
 
     _G.MX.NoFall = {Enabled = false}
     _G.MX.NextKiller = {Enabled = false, IndicatorGui = nil}
@@ -2160,7 +2170,7 @@ do
         end
         local n3 = 0
 
-        _G.MX.LightingGuardConn = RunService.Heartbeat:Connect(function()
+        _G.MX.LightingGuardConn = MXTrack(RunService.Heartbeat:Connect(function()
             if not _G.MX.FullBright and not _G.MX.NoFog and not _G.MX.NoShadow then
                 return
             end
@@ -2170,7 +2180,7 @@ do
             end
             n3 = now
             ReapplyPerformance()
-        end)
+        end))
     end
 
     StopLightingGuard = function()
@@ -2185,7 +2195,7 @@ do
     end
 
     if not _G.MX.LightingChildConn then
-        _G.MX.LightingChildConn = game:GetService("Lighting").ChildAdded:Connect(function(child)
+        _G.MX.LightingChildConn = MXTrack(game:GetService("Lighting").ChildAdded:Connect(function(child)
             if not _G.MX.FullBright and not _G.MX.NoFog then
                 return
             end
@@ -2200,7 +2210,7 @@ do
 
                 ReapplyPerformance()
             end)
-        end)
+        end))
     end
 
     local function fn16(arg, arg2, arg3)
@@ -2361,12 +2371,12 @@ do
             mesh.Scale = Vector3.new(-1, 1, 1)
             mesh.Parent = skyDome
             skyDome.Parent = workspace
-            skyFollow = RunService.RenderStepped:Connect(function()
+            skyFollow = MXTrack(RunService.RenderStepped:Connect(function()
                 local cam = workspace.CurrentCamera
                 if cam and skyDome then
                     skyDome.CFrame = CFrame.new(cam.CFrame.Position)
                 end
-            end)
+            end))
         elseif savedLighting then
             for key, value in pairs(savedLighting) do
                 lighting[key] = value
@@ -2394,7 +2404,7 @@ do
     end)
 
     if not _G.MX.LowGFX.StreamConn then
-        _G.MX.LowGFX.StreamConn = workspace.DescendantAdded:Connect(function(descendant)
+        _G.MX.LowGFX.StreamConn = MXTrack(workspace.DescendantAdded:Connect(function(descendant)
             if not _G.MX.LowGFX.Enabled then
                 return
             end
@@ -2402,7 +2412,7 @@ do
             task.defer(function()
                 LowGFX_ProcessOne(descendant)
             end)
-        end)
+        end))
     end
 
     CreateSpectatorUI = function()
@@ -2535,7 +2545,7 @@ do
         ScanMapESP()
     end)
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(1.5)
         ScanMapESP()
 
@@ -2549,9 +2559,9 @@ do
                 UpdateStaticESP()
             end)
         end
-    end)
+    end))
 
-    workspace.ChildAdded:Connect(function(child)
+    MXTrack(workspace.ChildAdded:Connect(function(child)
         if child.Name == "Map" then
             task.wait(1)
             ScanMapESP(true)
@@ -2575,7 +2585,7 @@ do
                 end
             end
         end
-    end)
+    end))
 
     task.spawn(function()
         while _G.MX.ScriptAlive do
@@ -2811,7 +2821,7 @@ do
                 return
             end
 
-            arg:GetPropertyChangedSignal("Visible"):Connect(function()
+            MXTrack(arg:GetPropertyChangedSignal("Visible"):Connect(function()
                 if not arg.Visible then
                     return
                 end
@@ -2842,25 +2852,25 @@ do
 
                     _G.MX.lastActionTime = tick()
                 end
-            end)
+            end))
         end
 
         for k, child in pairs(action:GetChildren()) do
             fn23(child)
         end
 
-        action.ChildAdded:Connect(function(child)
+        MXTrack(action.ChildAdded:Connect(function(child)
             task.wait()
             fn23(child)
-        end)
+        end))
     end
 
     task.spawn(fn22)
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(2)
         fn22()
-    end)
+    end))
 
     playerGui.ChildAdded:Connect(function(child)
         if child.Name == "Survivor-mob" then
@@ -2877,11 +2887,11 @@ do
             local kingScourgeStart = kingscourge and kingscourge:WaitForChild("KingScourgeStart", 5)
 
             if kingScourgeStart then
-                kingScourgeStart.OnClientEvent:Connect(function()
+                MXTrack(kingScourgeStart.OnClientEvent:Connect(function()
                     if _G.MX.Auto.SkillCheckMode == "Random" then
                         _G.MX.State.RandomMode_IsNormal = true
                     end
-                end)
+                end))
             end
         end)
     end)()
@@ -2960,7 +2970,7 @@ do
             _G.MX.Connections.SkillHeartbeat = nil
         end
 
-        _G.MX.Connections.SkillHeartbeat = RunService.Heartbeat:Connect(function()
+        _G.MX.Connections.SkillHeartbeat = MXTrack(RunService.Heartbeat:Connect(function()
             local forced = os.clock() < (_G.MX.State.ForceSkillUntil or 0)
             if not (_G.MX.Auto.SkillCheck or forced) or _G.MX.State.busy then
                 return
@@ -3008,11 +3018,11 @@ do
                     line.Rotation = lockGoal + 109
                     _G.MX.State.busy = true
 
-                    local lockConn = RunService.PreRender:Connect(function()
+                    local lockConn = MXTrack(RunService.PreRender:Connect(function()
                         if check.Visible and line.Parent and goal.Rotation == lockGoal then
                             line.Rotation = lockGoal + 109
                         end
-                    end)
+                    end))
 
                     task.spawn(function()
                         fn24(true)
@@ -3068,7 +3078,7 @@ do
             end
 
             _G.MX.State.RandomMode_IsNormal = false
-        end)
+        end))
     end
 
     getTargetPartObject = function(arg)
@@ -3307,7 +3317,15 @@ do
             local flatVel = Vector3.new(vel.X, 0, vel.Z)
             local vy = airborne and vel.Y or 0
             local worldG = workspace.Gravity
-            local pingLead = math.clamp(_G.MX.VeilPing or 0, 0, 0.12) * 0.5
+            local renderedAt = model:GetAttribute("VeilRenderedAt")
+            local compensated = typeof(renderedAt) == "number" and renderedAt == renderedAt
+            local pingLead = compensated and 0 or math.clamp(_G.MX.VeilPing or 0, 0, 0.12) * 0.5
+            local function applyViewDelay(out)
+                if compensated and typeof(out) == "table" then
+                    out.ViewDelay = math.clamp(workspace:GetServerTimeNow() - renderedAt, 0, 0.25)
+                end
+                return out
+            end
 
             local everyone = {}
             for _, pl in ipairs(Players:GetPlayers()) do
@@ -3515,7 +3533,7 @@ do
                         end
                         out.Direction = aimDir
                         out.Origin = startPos
-                        return out
+                        return applyViewDelay(out)
                     end
                 end
             end
@@ -3568,7 +3586,7 @@ do
             end
             out.Direction = dir.Unit
             out.Origin = outOrigin
-            return out
+            return applyViewDelay(out)
         end
 
         _G.MX.PickSurvivor = function()
@@ -3610,9 +3628,15 @@ do
 
         local v7 = getrawmetatable(game)
         setreadonly(v7, false)
-        local namecall = v7.__namecall
+        local hubEnv = getgenv()
+        local namecall = hubEnv.MXHUB_BaseNamecall
+        if type(namecall) ~= "function" then
+            namecall = v7.__namecall
+            hubEnv.MXHUB_BaseNamecall = namecall
+        end
 
-        v7.__namecall = newcclosure(function(arg, ...)
+        local ownHook
+        ownHook = newcclosure(function(arg, ...)
             local v8 = getnamecallmethod()
             local flag9 = v8 == "FireServer" or v8 == "fireServer" or v8 == "InvokeServer"
 
@@ -3628,9 +3652,21 @@ do
                 end
 
                 if ka and ka.chainOn and v8 == "FireServer" and arg.ClassName == "RemoteEvent" and arg.Name == "ChainThrow" and typeof((...)) == "Vector3" then
-                    local okChain, newDir = pcall(ka.chain, (...))
+                    local okChain, newDir, chainTarget = pcall(ka.chain, (...))
                     if okChain and newDir then
                         local rest = table.pack(select(2, ...))
+                        pcall(function()
+                            local info = rest[2]
+                            local renderedAt = chainTarget and chainTarget:GetAttribute("VeilRenderedAt")
+                            if typeof(info) == "table" and typeof(renderedAt) == "number" and renderedAt == renderedAt then
+                                local copy = {}
+                                for k, v in pairs(info) do
+                                    copy[k] = v
+                                end
+                                copy.ViewDelay = math.clamp(workspace:GetServerTimeNow() - renderedAt, 0, 0.25)
+                                rest[2] = copy
+                            end
+                        end)
                         setnamecallmethod(v8)
                         return namecall(arg, newDir, table.unpack(rest, 1, rest.n))
                     end
@@ -3821,6 +3857,19 @@ do
             return namecall(arg, ...)
         end)
 
+        v7.__namecall = ownHook
+        pcall(function()
+            lib.API.Track(function()
+                pcall(function()
+                    setreadonly(v7, false)
+                    if v7.__namecall == ownHook then
+                        v7.__namecall = namecall
+                    end
+                    setreadonly(v7, true)
+                end)
+            end)
+        end)
+
         setreadonly(v7, true)
         flag3 = true
     end
@@ -3841,10 +3890,10 @@ do
         setupSpearInterceptor()
     end)
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         fn29()
-    end)
+    end))
 end
 
 local tbl5, setNoFall, setNextKillerDisplay, setMapPrediction, setKillerPerksDisplay, setStunIndicator
@@ -3863,11 +3912,11 @@ do
                 _G.MX.InfLungeAttrConn:Disconnect()
             end
 
-            _G.MX.InfLungeAttrConn = character:GetAttributeChangedSignal("lungeboost"):Connect(function()
+            _G.MX.InfLungeAttrConn = MXTrack(character:GetAttributeChangedSignal("lungeboost"):Connect(function()
                 if _G.MX.InfiniteLungeEnabled and character:GetAttribute("lungeboost") ~= 999 then
                     character:SetAttribute("lungeboost", 999)
                 end
-            end)
+            end))
         end
 
     end
@@ -3888,13 +3937,13 @@ do
 
     end
 
-    localPlayer.CharacterAdded:Connect(function(character)
+    MXTrack(localPlayer.CharacterAdded:Connect(function(character)
         task.wait(0.8)
 
         if _G.MX.InfiniteLungeEnabled and character then
             character:SetAttribute("lungeboost", 999)
         end
-    end)
+    end))
 
     StopCounterParry = function()
         _G.MX.CounterParry.Enabled = false
@@ -4083,14 +4132,14 @@ do
         end
     end
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         _G.MX.CounterParry.Track = nil
         task.wait(1)
 
         if _G.MX.CounterParry.Enabled then
             StartCounterParry()
         end
-    end)
+    end))
 
     _G.MX.killerAimbotHighlight = Instance.new("Highlight")
     _G.MX.killerAimbotHighlight.Name = "KillerAimbotTarget"
@@ -4231,7 +4280,7 @@ do
             end
         end
 
-        textButton.InputBegan:Connect(function(input)
+        MXTrack(textButton.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 flag3 = true
                 flag4 = false
@@ -4249,9 +4298,9 @@ do
                     end
                 end)
             end
-        end)
+        end))
 
-        textButton.InputEnded:Connect(function(input)
+        MXTrack(textButton.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 if thread then
                     task.cancel(thread)
@@ -4267,19 +4316,19 @@ do
                 position = nil
                 position2 = nil
             end
-        end)
+        end))
 
-        UserInputService.InputChanged:Connect(function(input)
+        MXTrack(UserInputService.InputChanged:Connect(function(input)
             if flag3 and flag5 and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 fn29(input)
             end
-        end)
+        end))
 
         if _G.MX.Moonwalk._statusConn then
             _G.MX.Moonwalk._statusConn:Disconnect()
         end
 
-        _G.MX.Moonwalk._statusConn = RunService.Heartbeat:Connect(function()
+        _G.MX.Moonwalk._statusConn = MXTrack(RunService.Heartbeat:Connect(function()
             if _G.MX.Moonwalk.Gui and _G.MX.Moonwalk.Gui.Parent then
                 if _G.MX.Moonwalk.IsActive ~= _G.MX.Moonwalk.Enabled then
                     _G.MX.Moonwalk.IsActive = _G.MX.Moonwalk.Enabled
@@ -4292,10 +4341,10 @@ do
             if _G.MX.Moonwalk._statusConn then
                 _G.MX.Moonwalk._statusConn:Disconnect()
             end
-        end)
+        end))
     end
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(1)
 
         if _G.MX.Moonwalk.Enabled then
@@ -4306,14 +4355,14 @@ do
             _G.MX.Moonwalk.Gui.Enabled = true
             UpdateMoonwalkGUI(_G.MX.Moonwalk.Enabled)
         end
-    end)
+    end))
 
     task.spawn(function()
         task.wait(1.5)
         CreateMoonwalkGUI()
     end)
 
-    RunService.RenderStepped:Connect(function(deltaTime)
+    MXTrack(RunService.RenderStepped:Connect(function(deltaTime)
         if not _G.MX.Speed.Enabled and not _G.MX.Moonwalk.Enabled and not _G.MX.Crosshair.Enabled and not _G.MX.StretchRes.Enabled and (not _G.MX.Config.Killer_Aimbot_Enabled or not _G.MX.isKillerAimbotHolding) and not _G.MX.AimConfig.Aim_SilentVeilV2 and (not _G.MX.PistolHold or not _G.MX.AimConfig.Flash_Silent) then
             return
         end
@@ -4440,11 +4489,11 @@ do
             _G.MX.killerAimbotHighlight.Parent = nil
         end
 
-    end)
+    end))
 
     local n = 0
 
-    RunService.Heartbeat:Connect(function()
+    MXTrack(RunService.Heartbeat:Connect(function()
         if _G.MX.ParryConfig.ParryCircle and _G.MX.ParryConfig.AutoParry then
             local character = localPlayer.Character
             local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -4499,14 +4548,20 @@ do
             end
         end
 
-        if _G.MX.SurvivorNoSlowdown then
+        if _G.MX.SurvivorNoSlowdown and os.clock() < (_G.MX.SlowUntil or 0) then
             local character = localPlayer.Character
             local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 
             if humanoid and GetRole() ~= "Killer" and not character:GetAttribute("Trapped") and not character:GetAttribute("IsCarried") and not character:GetAttribute("Knocked") then
-                local base = tonumber(character:GetAttribute("Speed")) or 16
-                if humanoid.WalkSpeed < base and humanoid.WalkSpeed > 0 then
-                    humanoid.WalkSpeed = base
+                local wanted = 10
+                if character:GetAttribute("Crouching") == true then
+                    wanted = 6
+                elseif character:GetAttribute("Sprinting") == true then
+                    wanted = 17
+                end
+                wanted = wanted * (tonumber(character:GetAttribute("walkboost")) or 1)
+                if humanoid.WalkSpeed > 0 and humanoid.WalkSpeed < wanted then
+                    humanoid.WalkSpeed = wanted
                 end
             end
         end
@@ -4517,7 +4572,7 @@ do
             UpdateSCPESP()
             UpdateStaticESP()
         end
-    end)
+    end))
 
     local items = ReplicatedStorage:WaitForChild("Items", 5)
 
@@ -4907,7 +4962,7 @@ do
             return
         end
 
-        _G.MX.FakePerks.qrConnection = arg:GetAttributeChangedSignal("isvaulting"):Connect(function()
+        _G.MX.FakePerks.qrConnection = MXTrack(arg:GetAttributeChangedSignal("isvaulting"):Connect(function()
             if arg:GetAttribute("isvaulting") == true then
                 task.spawn(function()
                     task.wait(0.05)
@@ -4924,7 +4979,7 @@ do
                     end
                 end)
             end
-        end)
+        end))
     end
 
     ToggleQuickRecovery = function(quickRecoveryEnabled)
@@ -4976,7 +5031,7 @@ do
             return
         end
 
-        _G.MX.FakePerks.plConnection = arg:GetAttributeChangedSignal("speedboost"):Connect(function()
+        _G.MX.FakePerks.plConnection = MXTrack(arg:GetAttributeChangedSignal("speedboost"):Connect(function()
             if not fn29() then
                 return
             end
@@ -4984,7 +5039,7 @@ do
             if arg:GetAttribute("speedboost") == 0.625 then
                 fn33(arg)
             end
-        end)
+        end))
     end
 
     TogglePerfectLanding = function(perfectLandingEnabled)
@@ -5031,7 +5086,7 @@ do
             return
         end
 
-        _G.MX.FakePerks.fsAnimConnection = animator.AnimationPlayed:Connect(function(arg2)
+        _G.MX.FakePerks.fsAnimConnection = MXTrack(animator.AnimationPlayed:Connect(function(arg2)
             if not arg2.Animation then
                 return
             end
@@ -5041,7 +5096,7 @@ do
             end
             local connection = nil
 
-            connection = arg2.Stopped:Connect(function()
+            connection = MXTrack(arg2.Stopped:Connect(function()
                 if connection then
                     connection:Disconnect()
                 end
@@ -5060,10 +5115,10 @@ do
                         arg:SetAttribute("Flowstate", true)
                     end
                 end)
-            end)
-        end)
+            end))
+        end))
 
-        _G.MX.FakePerks.fsConnection = arg:GetAttributeChangedSignal("Flowstate"):Connect(function()
+        _G.MX.FakePerks.fsConnection = MXTrack(arg:GetAttributeChangedSignal("Flowstate"):Connect(function()
             if not _G.MX.FakePerks.FlowstateEnabled then
                 return
             end
@@ -5084,7 +5139,7 @@ do
                     arg:SetAttribute("Flowstate", true)
                 end
             end
-        end)
+        end))
 
         task.wait(0.5)
 
@@ -6487,7 +6542,7 @@ do
     SetupHookDetection = function()
         for k, player in pairs(Players:GetPlayers()) do
             if player ~= localPlayer then
-                player:GetAttributeChangedSignal("HookCount"):Connect(function()
+                MXTrack(player:GetAttributeChangedSignal("HookCount"):Connect(function()
                     local name = player.Name
                     local attribute = player:GetAttribute("HookCount")
                     local n2 = attribute or 0
@@ -6497,13 +6552,13 @@ do
                         UpdateHookESP()
                         UpdateHookUICounter()
                     end
-                end)
+                end))
             end
         end
     end
 
-    Players.PlayerAdded:Connect(function(player)
-        player:GetAttributeChangedSignal("HookCount"):Connect(function()
+    MXTrack(Players.PlayerAdded:Connect(function(player)
+        MXTrack(player:GetAttributeChangedSignal("HookCount"):Connect(function()
             local name = player.Name
             local attribute = player:GetAttribute("HookCount")
             local n2 = attribute or 0
@@ -6513,8 +6568,8 @@ do
                 UpdateHookESP()
                 UpdateHookUICounter()
             end
-        end)
-    end)
+        end))
+    end))
 
     task.spawn(function()
         task.wait(2)
@@ -6564,15 +6619,15 @@ do
 
     end
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(0.5)
 
         if _G.MX.CameraFOV.Enabled then
             currentCamera.FieldOfView = _G.MX.CameraFOV.Value
         end
-    end)
+    end))
 
-    workspace.ChildAdded:Connect(function(child)
+    MXTrack(workspace.ChildAdded:Connect(function(child)
         if child.Name == "Map" then
             task.wait(0.5)
 
@@ -6580,7 +6635,7 @@ do
                 currentCamera.FieldOfView = _G.MX.CameraFOV.Value
             end
         end
-    end)
+    end))
 
     ResetAllTransparency = function()
         local v5, v6, v7 = pairs(currentCamera:GetChildren())
@@ -6832,7 +6887,7 @@ do
         SetWorldTransparency(1)
 
         local acc = 0
-        _G.MX.State.ThirdPersonConn = RunService.Heartbeat:Connect(function(dt)
+        _G.MX.State.ThirdPersonConn = MXTrack(RunService.Heartbeat:Connect(function(dt)
             if not tbl2.Enabled then
                 return
             end
@@ -6852,10 +6907,10 @@ do
             end
             fn51()
             fn(ThirdPersonToggle, false)
-        end)
+        end))
     end
 
-    localPlayer:GetPropertyChangedSignal("Team"):Connect(function()
+    MXTrack(localPlayer:GetPropertyChangedSignal("Team"):Connect(function()
         local team = localPlayer.Team
         local name = team and localPlayer.Team.Name
 
@@ -6867,9 +6922,9 @@ do
                 fn51()
             end
         end
-    end)
+    end))
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(0.8)
 
         if tbl2.Enabled and localPlayer.Team and localPlayer.Team.Name == "Killer" then
@@ -6879,7 +6934,7 @@ do
         else
             fn51()
         end
-    end)
+    end))
 
     setNoFall = function(enabled)
         _G.MX.NoFall.Enabled = enabled
@@ -7327,7 +7382,7 @@ do
         textLabel2.TextWrapped = false
         textLabel2.Parent = frame3
 
-        Minimize.MouseButton1Click:Connect(function()
+        MXTrack(Minimize.MouseButton1Click:Connect(function()
             local killerPerks = _G.MX.KillerPerks
             local minimized
 
@@ -7353,9 +7408,9 @@ do
             local minimized3 = _G.MX.KillerPerks.Minimized
             local udim2 = minimized3 and UDim2.new(0, 180, 0, 24) or UDim2.new(0, 180, 0, 85)
             frame2.Size = udim2
-        end)
+        end))
 
-        Close.MouseButton1Click:Connect(function()
+        MXTrack(Close.MouseButton1Click:Connect(function()
             _G.MX.KillerPerks.Enabled = false
 
             if _G.MX.KillerPerks.Gui then
@@ -7369,27 +7424,27 @@ do
             if KillerPerksToggle then
                 fn(KillerPerksToggle, false)
             end
-        end)
+        end))
 
         local flag4 = false
         local position = nil
         local position2 = nil
 
-        frame2.InputBegan:Connect(function(input)
+        MXTrack(frame2.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 flag4 = true
                 position = input.Position
                 position2 = frame2.Position
 
-                input.Changed:Connect(function()
+                MXTrack(input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         flag4 = false
                     end
-                end)
+                end))
             end
-        end)
+        end))
 
-        UserInputService.InputChanged:Connect(function(input)
+        MXTrack(UserInputService.InputChanged:Connect(function(input)
             if not flag4 or not position or not position2 then
                 return
             end
@@ -7399,7 +7454,7 @@ do
             end
             local n2 = input.Position - position
             frame2.Position = UDim2.new(position2.X.Scale, position2.X.Offset + n2.X, position2.Y.Scale, position2.Y.Offset + n2.Y)
-        end)
+        end))
 
         screenGui2.Parent = CoreGui
         _G.MX.KillerPerks.Gui = screenGui2
@@ -7517,17 +7572,17 @@ do
             end)
         end
 
-        local connection2 = arg:GetAttributeChangedSignal("IsStunned"):Connect(function()
+        local connection2 = MXTrack(arg:GetAttributeChangedSignal("IsStunned"):Connect(function()
             if arg:GetAttribute("IsStunned") == true then
                 fn69(2.2)
             end
-        end)
+        end))
 
-        local connection3 = arg:GetAttributeChangedSignal("Immobile"):Connect(function()
+        local connection3 = MXTrack(arg:GetAttributeChangedSignal("Immobile"):Connect(function()
             if arg:GetAttribute("Immobile") == true then
                 fn69(2.2)
             end
-        end)
+        end))
 
         table.insert(tbl8.extraConns, connection2)
         table.insert(tbl8.extraConns, connection3)
@@ -7573,28 +7628,28 @@ do
         end
     end
 
-    Players.PlayerAdded:Connect(function(player)
+    MXTrack(Players.PlayerAdded:Connect(function(player)
         if not _G.MX.Stun.Enabled then
             return
         end
 
-        player.CharacterAdded:Connect(function(character)
+        MXTrack(player.CharacterAdded:Connect(function(character)
             task.wait(0.5)
 
             if _G.MX.Stun.Enabled and IsKiller(player) then
                 fn68(character)
             end
-        end)
+        end))
 
         task.wait(0.5)
 
         if _G.MX.Stun.Enabled and IsKiller(player) and player.Character then
             fn68(player.Character)
         end
-    end)
+    end))
 
-    Players.PlayerAdded:Connect(function(player)
-        player:GetPropertyChangedSignal("Team"):Connect(function()
+    MXTrack(Players.PlayerAdded:Connect(function(player)
+        MXTrack(player:GetPropertyChangedSignal("Team"):Connect(function()
             if not _G.MX.Stun.Enabled then
                 return
             end
@@ -7605,24 +7660,24 @@ do
                 task.wait(0.1)
                 fn68(player.Character)
             end
-        end)
-    end)
+        end))
+    end))
 
-    Players.PlayerAdded:Connect(function(player)
+    MXTrack(Players.PlayerAdded:Connect(function(player)
         task.wait(0.5)
 
         if _G.MX.Stun.Enabled then
             fn70()
         end
-    end)
+    end))
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.wait(1.5)
 
         if _G.MX.Stun.Enabled then
             fn70()
         end
-    end)
+    end))
 
     task.spawn(function()
         local v5, v6, v7, v8, v9, v10, humanoidRootPart, n2
@@ -7772,9 +7827,97 @@ do
         _G.MX.Speed.Enabled = enabled
     end, {Flag = "SpeedBoost"})
 
-    MovementCard:AddToggle("No Slowdown (Survivor)", false, function(on)
-        _G.MX.SurvivorNoSlowdown = on
-    end, {Flag = "SurvivorNoSlowdown"})
+    do
+        local slowEvents = {}
+        local disabled = {}
+        local function collectSlowEvents()
+            local mech = ReplicatedStorage:FindFirstChild("Remotes")
+            mech = mech and mech:FindFirstChild("Mechanics")
+            if not mech then
+                return
+            end
+            local serverSlow = mech:FindFirstChild("Slowserver")
+            local localSlow = mech:FindFirstChild("Slow")
+            slowEvents = {}
+            if serverSlow and serverSlow:IsA("RemoteEvent") then
+                slowEvents[#slowEvents + 1] = serverSlow.OnClientEvent
+            end
+            if localSlow and localSlow:IsA("BindableEvent") then
+                slowEvents[#slowEvents + 1] = localSlow.Event
+            end
+        end
+
+        local function setSlowHandlers(block)
+            if type(getconnections) ~= "function" then
+                return
+            end
+            for _, signal in ipairs(slowEvents) do
+                local ok, list = pcall(getconnections, signal)
+                if ok and type(list) == "table" then
+                    for _, conn in ipairs(list) do
+                        if block and not disabled[conn] then
+                            if pcall(function() conn:Disable() end) then
+                                disabled[conn] = true
+                            end
+                        elseif not block and disabled[conn] then
+                            pcall(function() conn:Enable() end)
+                            disabled[conn] = nil
+                        end
+                    end
+                end
+            end
+        end
+
+        local noteConns = {}
+        local function watchSlow()
+            for _, c in ipairs(noteConns) do
+                pcall(function() c:Disconnect() end)
+            end
+            noteConns = {}
+            collectSlowEvents()
+            for _, signal in ipairs(slowEvents) do
+                local okc, conn = pcall(function()
+                    return signal:Connect(function(speed, duration)
+                        if _G.MX.SurvivorNoSlowdown then
+                            _G.MX.SlowUntil = os.clock() + (tonumber(duration) or 1) + 0.3
+                        end
+                    end)
+                end)
+                if okc and conn then
+                    noteConns[#noteConns + 1] = conn
+                end
+            end
+        end
+
+        task.spawn(function()
+            while not lib.API.Unloaded do
+                if _G.MX.SurvivorNoSlowdown then
+                    if #slowEvents == 0 then
+                        watchSlow()
+                    end
+                    setSlowHandlers(true)
+                end
+                task.wait(1)
+            end
+        end)
+        lib.API.Track(function()
+            setSlowHandlers(false)
+            for _, c in ipairs(noteConns) do
+                pcall(function() c:Disconnect() end)
+            end
+        end)
+
+        MovementCard:AddToggle("No Slowdown (Survivor)", false, function(on)
+            _G.MX.SurvivorNoSlowdown = on
+            if on then
+                watchSlow()
+                setSlowHandlers(true)
+            else
+                _G.MX.SlowUntil = 0
+                setSlowHandlers(false)
+            end
+        end, {Flag = "SurvivorNoSlowdown"})
+    end
 
     MovementCard:AddSlider("SpeedAmount", 0.1, 1.5, 0.1, function(value)
         _G.MX.Speed.Value = value
@@ -7906,11 +8049,11 @@ do
 
                 local blocked = false
                 local currentWaypoint = 2
-                local blockedConn = path.Blocked:Connect(function(blockedIndex)
+                local blockedConn = MXTrack(path.Blocked:Connect(function(blockedIndex)
                     if blockedIndex >= currentWaypoint then
                         blocked = true
                     end
-                end)
+                end))
                 local waypoints = path:GetWaypoints()
                 local arrived, stuck = false, false
 
@@ -8083,9 +8226,9 @@ MX.run("Pumpkin", {CollectionService = CollectionService, PumpkinCard = PumpkinC
         local b = k and k:WaitForChild("Butcher", 5)
         local ft = b and b:WaitForChild("FreeTrap", 5)
         if ft then
-            ft.OnClientEvent:Connect(function(...)
+            MXTrack(ft.OnClientEvent:Connect(function(...)
                 warn("[MXHUB] FreeTrap server ->", ...)
-            end)
+            end))
         end
     end)
 
@@ -8722,7 +8865,7 @@ task.spawn(function()
     fn2()
 end)
 
-localPlayer.CharacterAdded:Connect(function()
+MXTrack(localPlayer.CharacterAdded:Connect(function()
     _G.MX.State.busy = false
     _G.MX.State.RandomMode_IsNormal = false
 
@@ -8730,9 +8873,9 @@ localPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         fn7()
     end
-end)
+end))
 
-localPlayer.CharacterAdded:Connect(function()
+MXTrack(localPlayer.CharacterAdded:Connect(function()
     task.wait(1.5)
 
     if _G.MX.NoSlowdownEnabled then
@@ -8746,11 +8889,11 @@ localPlayer.CharacterAdded:Connect(function()
             end
         end
     end
-end)
+end))
 
 local v69 = nil
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+MXTrack(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     local flag2 = input.UserInputType == Enum.UserInputType.Touch
     local v70 = GetRole()
 
@@ -8798,9 +8941,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             end
         end
     end
-end)
+end))
 
-UserInputService.InputEnded:Connect(function(input)
+MXTrack(UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         _G.MX.isKillerAimbotHolding = false
         _G.MX.lockedKillerAimbotTarget = nil
@@ -8819,19 +8962,19 @@ UserInputService.InputEnded:Connect(function(input)
             _G.MX.killerAimbotHighlight.Parent = nil
         end
     end
-end)
+end))
 
-localPlayer.CharacterAdded:Connect(function()
+MXTrack(localPlayer.CharacterAdded:Connect(function()
     task.wait(1.5)
     ReapplyPerformanceDelayed()
-end)
+end))
 
-workspace.ChildAdded:Connect(function(child)
+MXTrack(workspace.ChildAdded:Connect(function(child)
     if child.Name == "Map" then
         task.wait(1)
         ReapplyPerformanceDelayed()
     end
-end)
+end))
 
 task.spawn(function()
     task.wait(2)
