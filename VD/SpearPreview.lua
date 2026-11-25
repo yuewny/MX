@@ -7,7 +7,7 @@ return function(ctx)
     local MAX_LIFE = 4
     local SPEAR_LENGTH = 7.6
     local STEP = 0.04
-    local SEGMENTS = 36
+    local MAX_RANGE = 260
     local BODY = {"Head", "Torso", "UpperTorso", "LowerTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
     local COLOR_FREE = Color3.fromRGB(255, 255, 255)
@@ -135,11 +135,8 @@ return function(ctx)
         return part
     end
 
-    local lines, halos = {}, {}
-    for i = 1, SEGMENTS do
-        halos[i] = newPart(Vector3.new(0.3, 0.3, 1))
-        lines[i] = newPart(Vector3.new(0.08, 0.08, 1))
-    end
+    local halo = newPart(Vector3.new(0.35, 0.35, 1))
+    local core = newPart(Vector3.new(0.09, 0.09, 1))
     local targetGlow = Instance.new("Highlight")
     targetGlow.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     targetGlow.FillTransparency = 0.55
@@ -165,10 +162,8 @@ return function(ctx)
     label.Parent = gui
 
     local function hide()
-        for i = 1, SEGMENTS do
-            lines[i].Transparency = 1
-            halos[i].Transparency = 1
-        end
+        core.Transparency = 1
+        halo.Transparency = 1
         targetGlow.Adornee = nil
         marker.Transparency = 1
         hitbox.Transparency = 1
@@ -178,53 +173,32 @@ return function(ctx)
     local lastPlan, lastPlanAt = nil, 0
     local lastPick, lastPickAt = nil, 0
 
-    local function draw(points, kind, char, origin, armPos, glowChar)
+    local function draw(tip, kind, char, origin, startPos, glowChar)
         local color = kind == "hit" and COLOR_HIT or (kind == "wall" and COLOR_WALL or COLOR_FREE)
-        if armPos then
-            table.insert(points, 1, armPos)
+        local offset = tip - startPos
+        local length = offset.Magnitude
+        if length < 0.5 then
+            hide()
+            return
         end
-        local count = #points - 1
-        local per = math.max(1, math.ceil(count / SEGMENTS))
-        local used = 0
-        local index = 1
-        while index <= count and used < SEGMENTS do
-            local a = points[index]
-            local b = points[math.min(index + per, #points)]
-            used = used + 1
-            local line = lines[used]
-            local length = (b - a).Magnitude
-            if length > 0.01 then
-                local middle = CFrame.lookAt((a + b) / 2, b)
-                local fade = 0.1 + 0.5 * (used / SEGMENTS)
-                line.Size = Vector3.new(0.08, 0.08, length)
-                line.CFrame = middle
-                line.Color = color
-                line.Transparency = fade
-                local halo = halos[used]
-                halo.Size = Vector3.new(0.3, 0.3, length)
-                halo.CFrame = middle
-                halo.Color = color
-                halo.Transparency = 0.8 + 0.2 * (used / SEGMENTS)
-            end
-            index = index + per
-        end
-        for i = used + 1, SEGMENTS do
-            lines[i].Transparency = 1
-            halos[i].Transparency = 1
-        end
-        local pulse = 1.2 + 0.25 * math.sin(os.clock() * 8)
+        local heading = offset.Unit
+        local middle = CFrame.lookAt((startPos + tip) / 2, tip)
+        core.Size = Vector3.new(0.09, 0.09, length)
+        core.CFrame = middle
+        core.Color = color
+        core.Transparency = 0.05
+        halo.Size = Vector3.new(0.35, 0.35, length)
+        halo.CFrame = middle
+        halo.Color = color
+        halo.Transparency = 0.8
+        local pulse = 1.4 + 0.3 * math.sin(os.clock() * 8)
         marker.Size = Vector3.new(pulse, pulse, pulse)
-        local tip = points[#points]
-        local before = points[math.max(#points - 1, 1)]
-        local heading = tip - before
         marker.Position = tip
         marker.Color = color
-        marker.Transparency = 0.25
-        if heading.Magnitude > 0.01 then
-            hitbox.CFrame = CFrame.lookAt(tip - heading.Unit * (SPEAR_LENGTH / 2), tip)
-            hitbox.Color = color
-            hitbox.Transparency = 0.6
-        end
+        marker.Transparency = 0.3
+        hitbox.CFrame = CFrame.lookAt(tip - heading * (SPEAR_LENGTH / 2), tip)
+        hitbox.Color = color
+        hitbox.Transparency = 0.65
         local text = string.format("%d studs", math.floor((tip - origin).Magnitude + 0.5))
         if kind == "hit" and char then
             text = text .. "  |  " .. char.Name
@@ -254,7 +228,7 @@ return function(ctx)
             hide()
             return
         end
-        local speed = math.clamp((os.clock() - startedAt) * MAX_SPEED, 1, MAX_SPEED)
+        local speed = MAX_SPEED
         local origin = head.Position
         local dir = cam.CFrame.LookVector
         if _G.MX.AimConfig.Aim_SilentVeilV2 and _G.MX.SpearAim then
@@ -283,7 +257,9 @@ return function(ctx)
             end
         end
         local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("Torso")
-        draw(points, kind, hitChar, origin, arm and arm.Position, glowChar)
+        local startPos = arm and arm.Position or origin
+        local reach = math.clamp((points[#points] - origin):Dot(dir), 5, MAX_RANGE)
+        draw(origin + dir * reach, kind, hitChar, origin, startPos, glowChar)
     end)
 
     Card:AddToggle("Highlight", true, function(on)
