@@ -174,7 +174,7 @@ return function(ctx)
     local lastPick, lastPickAt = nil, 0
 
     local function draw(tip, kind, char, origin, startPos, glowChar)
-        local color = kind == "hit" and COLOR_HIT or (kind == "wall" and COLOR_WALL or COLOR_FREE)
+        local color = kind == "hit" and COLOR_HIT or COLOR_FREE
         local offset = tip - startPos
         local length = offset.Magnitude
         if length < 0.5 then
@@ -207,7 +207,7 @@ return function(ctx)
         gui.Enabled = true
         if glowChar then
             targetGlow.Adornee = glowChar
-            local glow = kind == "hit" and COLOR_HIT or COLOR_TARGET
+            local glow = COLOR_HIT
             targetGlow.FillColor = glow
             targetGlow.OutlineColor = glow
         else
@@ -231,29 +231,25 @@ return function(ctx)
         local speed = MAX_SPEED
         local origin = head.Position
         local dir = cam.CFrame.LookVector
-        if _G.MX.AimConfig.Aim_SilentVeilV2 and _G.MX.SpearAim then
-            if os.clock() - lastPlanAt > 0.1 then
-                lastPlanAt = os.clock()
-                lastPlan = _G.MX.SpearAim(origin, dir, speed)
-            end
-            dir = lastPlan or dir
-        end
         local everyone = {}
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr.Character then
                 everyone[#everyone + 1] = plr.Character
             end
         end
-        local points, kind, hitChar = Preview.simulate(origin, dir, speed, survivors(), everyone)
+        local list = survivors()
+        local points, kind, hitChar = Preview.simulate(origin, dir, speed, list, everyone)
         local glowChar = hitChar
-        if not glowChar and _G.MX.AimConfig.Aim_SilentVeilV2 and _G.MX.PickSurvivor then
-            if os.clock() - lastPickAt > 0.1 then
-                lastPickAt = os.clock()
-                lastPick = _G.MX.PickSurvivor()
+        if kind ~= "hit" and _G.MX.AimConfig.Aim_SilentVeilV2 and _G.MX.SpearAim then
+            if os.clock() - lastPlanAt > 0.1 then
+                lastPlanAt = os.clock()
+                lastPlan = _G.MX.SpearAim(origin, dir, speed)
             end
-            glowChar = lastPick
-            if glowChar and (not glowChar.Parent or glowChar:GetAttribute("Knocked") or glowChar:GetAttribute("IsHooked")) then
-                glowChar = nil
+            if lastPlan then
+                local vPoints, vKind, vChar = Preview.simulate(origin, lastPlan, speed, list, everyone)
+                if vKind == "hit" then
+                    points, kind, hitChar, glowChar = vPoints, "hit", vChar, vChar
+                end
             end
         end
         local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("Torso")
