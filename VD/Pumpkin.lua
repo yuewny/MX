@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
 local CollectionService, PumpkinCard, ReplicatedStorage, localPlayer = ctx.CollectionService, ctx.PumpkinCard, ctx.ReplicatedStorage, ctx.localPlayer
     do
         local PumpCard = PumpkinCard
@@ -47,9 +48,9 @@ local CollectionService, PumpkinCard, ReplicatedStorage, localPlayer = ctx.Colle
             end
         end
         CollectionService:GetInstanceAddedSignal("pumpkin"):Connect(addCandidate)
-        CollectionService:GetInstanceRemovedSignal("pumpkin"):Connect(function(part)
+        MXTrack(CollectionService:GetInstanceRemovedSignal("pumpkin"):Connect(function(part)
             candidates[part] = nil
-        end)
+        end))
         rescan()
 
         PumpCard:AddToggle("Auto Stomp Pumpkins", false, function(v)

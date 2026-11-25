@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
 local CollectionService, CoreGui, IsDowned, PistolSection, Players, ReplicatedStorage, RunService, UserInputService, localPlayer, playerGui = ctx.CollectionService, ctx.CoreGui, ctx.IsDowned, ctx.PistolSection, ctx.Players, ctx.ReplicatedStorage, ctx.RunService, ctx.UserInputService, ctx.localPlayer, ctx.playerGui
 local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunObject, getTargetPosition, hookMobileButtons, isTargetVisible, setupMobileButton, startConnection, stopConnection
     local fire
@@ -319,12 +320,12 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
 
     task.defer(fn74)
 
-    localPlayer.CharacterAdded:Connect(function()
+    MXTrack(localPlayer.CharacterAdded:Connect(function()
         task.defer(function()
             task.wait(0.25)
             fn74()
         end)
-    end)
+    end))
 
     local function aimUnit()
         local _, _, muzzle, aimPoint = getTargetPosition()
@@ -349,7 +350,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
             return
         end
 
-        connection2 = RunService.Heartbeat:Connect(function()
+        connection2 = MXTrack(RunService.Heartbeat:Connect(function()
             if flag8 and flag4 then
                 local v34, v35, v36, v37 = getTargetPosition()
 
@@ -369,7 +370,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                     end
                 end
             end
-        end)
+        end))
     end
 
     stopConnection = function()
@@ -521,11 +522,11 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
 
             textButton2.MouseButton1Click:Connect(fn76)
 
-            textButton2.InputEnded:Connect(function(input)
+            MXTrack(textButton2.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.Touch then
                     fn76()
                 end
-            end)
+            end))
 
             tbl13[v35.internal] = textButton2
         end
@@ -537,7 +538,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
         local position = nil
         local position2 = nil
 
-        textButton.InputBegan:Connect(function(input)
+        MXTrack(textButton.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 flag9 = true
                 flag10 = false
@@ -545,9 +546,9 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                 position = input.Position
                 position2 = frame2.Position
             end
-        end)
+        end))
 
-        textButton.InputEnded:Connect(function(input)
+        MXTrack(textButton.InputEnded:Connect(function(input)
             if input == v35 then
                 flag9 = false
 
@@ -566,9 +567,9 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
 
                 v35 = nil
             end
-        end)
+        end))
 
-        UserInputService.InputChanged:Connect(function(input)
+        MXTrack(UserInputService.InputChanged:Connect(function(input)
             if not flag9 then
                 return
             end
@@ -593,14 +594,14 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                     udim2 = udim22
                 end
             end
-        end)
+        end))
 
         if connection3 then
             connection3:Disconnect()
             connection3 = nil
         end
 
-        connection3 = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        connection3 = MXTrack(UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if not flag4 then
                 return
             end
@@ -622,7 +623,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                 str = str2
                 fn75()
             end
-        end)
+        end))
 
         v34 = screenGui2
     end
@@ -698,7 +699,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
         _G.MX.AimConfig.Flash_Silent = on
     end, {Flag = "FlashSilentAim"})
 
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    MXTrack(UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local flag9 = input.UserInputType == Enum.UserInputType.Touch
         if gameProcessed and not flag9 then
             return
@@ -711,9 +712,9 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                 _G.MX.PistolHold = true
             end
         end
-    end)
+    end))
 
-    UserInputService.InputEnded:Connect(function(input)
+    MXTrack(UserInputService.InputEnded:Connect(function(input)
         if itemInput(input) then
             flag8 = false
             if flag4 and not flashEquipped() then
@@ -721,7 +722,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
             end
             _G.MX.PistolHold = false
         end
-    end)
+    end))
 
     local connection4 = nil
 
@@ -736,7 +737,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
             return
         end
 
-        guiMob.InputBegan:Connect(function(input)
+        MXTrack(guiMob.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 flag8 = true
 
@@ -744,9 +745,9 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                     _G.MX.PistolHold = true
                 end
             end
-        end)
+        end))
 
-        guiMob.InputEnded:Connect(function(input)
+        MXTrack(guiMob.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                 flag8 = false
                 if flag4 then
@@ -754,7 +755,7 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
                 end
                 _G.MX.PistolHold = false
             end
-        end)
+        end))
     end
 
     setupMobileButton = function()
@@ -773,16 +774,16 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
             connection4 = nil
         end
 
-        connection4 = playerGui2.ChildAdded:Connect(function(child)
+        connection4 = MXTrack(playerGui2.ChildAdded:Connect(function(child)
             if child.Name == "Survivor-mob" then
                 task.spawn(hookMobileButtons, child)
             end
-        end)
+        end))
     end
 
     setupMobileButton()
 
-    localPlayer.CharacterAdded:Connect(function(character)
+    MXTrack(localPlayer.CharacterAdded:Connect(function(character)
         tbl10 = {}
         n2 = 0
         flag8 = false
@@ -794,9 +795,9 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
             task.wait(0.2)
             startConnection()
         end
-    end)
+    end))
 
-    playerGui.ChildRemoved:Connect(function(child)
+    MXTrack(playerGui.ChildRemoved:Connect(function(child)
         if not flag4 then
             return
         end
@@ -807,6 +808,6 @@ local GetSCPs, createTargetSelectorUI, destroyTargetSelectorUI, doShoot, getGunO
 
         if child.Name == "ToFTargetSelector" then
         end
-    end)
+    end))
 
 end

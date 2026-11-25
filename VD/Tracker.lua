@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
     local Players, ReplicatedStorage, RunService, localPlayer, lib = ctx.Players, ctx.ReplicatedStorage, ctx.RunService, ctx.localPlayer, ctx.lib
 
     local CORE = Color3.fromRGB(255, 150, 30)
@@ -78,7 +79,7 @@ return function(ctx)
         local started = os.clock()
         local last = position(0)
         local run = {}
-        run.connection = RunService.Heartbeat:Connect(function()
+        run.connection = MXTrack(RunService.Heartbeat:Connect(function()
             local t = os.clock() - started
             if t > maxTime then
                 t = maxTime
@@ -99,11 +100,11 @@ return function(ctx)
                 run.connection:Disconnect()
                 runs[run] = nil
             end
-        end)
+        end))
         runs[run] = true
     end
 
-    local fadeConnection = RunService.Heartbeat:Connect(function()
+    local fadeConnection = MXTrack(RunService.Heartbeat:Connect(function()
         local now = os.clock()
         local i = 1
         while i <= #segments do
@@ -120,7 +121,7 @@ return function(ctx)
                 i = i + 1
             end
         end
-    end)
+    end))
 
     local SPEAR_GRAVITY = Vector3.new(0, -98.1, 0)
     local SPEAR_OFFSET = 3
@@ -163,9 +164,9 @@ return function(ctx)
         local tof = items and items:WaitForChild("Twist of Fate", 10)
         local visualize = tof and tof:WaitForChild("VisualizeBullet", 10)
         if visualize then
-            visualize.OnClientEvent:Connect(function(from, to, speed)
+            MXTrack(visualize.OnClientEvent:Connect(function(from, to, speed)
                 pcall(Tracker.bullet, from, to, speed)
-            end)
+            end))
         end
     end)
 

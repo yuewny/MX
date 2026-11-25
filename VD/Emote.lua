@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
     local ExtraCard, lib, localPlayer = ctx.ExtraCard, ctx.lib, ctx.localPlayer
     local HttpService = game:GetService("HttpService")
     local RunService = game:GetService("RunService")
@@ -76,13 +77,13 @@ return function(ctx)
         end
 
         local origin = root.Position
-        moveConn = RunService.Heartbeat:Connect(function()
+        moveConn = MXTrack(RunService.Heartbeat:Connect(function()
             if not (track and track.IsPlaying) or hum.Health <= 0 then
                 stopEmote()
             elseif stopOnMove and (hum.MoveDirection.Magnitude > 0.1 or (root.Position - origin).Magnitude > 6) then
                 stopEmote()
             end
-        end)
+        end))
     end
 
     local dropdown = ExtraCard:AddDropdown("Emote", {"Loading..."}, false, function(value)

@@ -1,7 +1,9 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
     local Card, RunService, Players, CollectionService, localPlayer, lib = ctx.Card, ctx.RunService, ctx.Players, ctx.CollectionService, ctx.localPlayer, ctx.lib
 
     local MAX_SPEED = 165
+    local MAX_RANGE = 260
     local GRAVITY = 98.1
     local SPAWN_OFFSET = 3
     local MAX_LIFE = 4
@@ -10,9 +12,6 @@ return function(ctx)
     local BODY = {"Head", "Torso", "UpperTorso", "LowerTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
     local COLOR_FREE = Color3.fromRGB(255, 255, 255)
-    local COLOR_HIT = Color3.fromRGB(70, 255, 120)
-    local COLOR_WALL = Color3.fromRGB(255, 80, 80)
-    local COLOR_TARGET = Color3.fromRGB(255, 210, 0)
 
     local Preview = {enabled = true}
     _G.MX.SpearPreview = Preview
@@ -134,102 +133,48 @@ return function(ctx)
         return part
     end
 
-    local SEGMENTS = 40
-    local segs = {}
-    for i = 1, SEGMENTS do
-        segs[i] = newPart(Vector3.new(0.14, 0.14, 1))
-    end
-    local targetGlow = Instance.new("Highlight")
-    targetGlow.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    targetGlow.FillTransparency = 0.55
-    targetGlow.OutlineTransparency = 0
-    targetGlow.Parent = folder
-    local marker = newPart(Vector3.new(1.4, 1.4, 1.4), Enum.PartType.Ball)
-    local hitbox = newPart(Vector3.new(0.7, 0.7, SPEAR_LENGTH))
-    hitbox.Material = Enum.Material.ForceField
+    local base = newPart(Vector3.new(0.1, 0.1, 0.1))
+    local att0 = Instance.new("Attachment")
+    att0.Parent = base
+    local att1 = Instance.new("Attachment")
+    att1.Parent = base
+    local beam = Instance.new("Beam")
+    beam.Attachment0 = att0
+    beam.Attachment1 = att1
+    beam.Width0 = 0.12
+    beam.Width1 = 0.12
+    beam.Color = ColorSequence.new(COLOR_FREE)
+    beam.FaceCamera = true
+    beam.LightEmission = 1
+    beam.Transparency = NumberSequence.new(0.1)
+    beam.Enabled = false
+    beam.Parent = base
+
+    local marker = newPart(Vector3.new(1.2, 1.2, 1.2), Enum.PartType.Ball)
+    marker.Color = COLOR_FREE
 
     local gui = Instance.new("BillboardGui")
-    gui.Size = UDim2.fromOffset(160, 36)
-    gui.StudsOffset = Vector3.new(0, 2.5, 0)
+    gui.Size = UDim2.fromOffset(120, 28)
+    gui.StudsOffset = Vector3.new(0, 2, 0)
     gui.AlwaysOnTop = true
     gui.Enabled = false
     gui.Parent = marker
     local label = Instance.new("TextLabel")
     label.Size = UDim2.fromScale(1, 1)
     label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextColor3 = COLOR_FREE
     label.TextStrokeTransparency = 0.3
     label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.Parent = gui
 
     local function hide()
-        for i = 1, SEGMENTS do
-            segs[i].Transparency = 1
-        end
-        targetGlow.Adornee = nil
+        beam.Enabled = false
         marker.Transparency = 1
-        hitbox.Transparency = 1
         gui.Enabled = false
     end
 
-    local lastPlan, lastPlanOrigin, lastPlanAt = nil, nil, 0
-
-    local function draw(points, kind, char, origin, glowChar)
-        local color = kind == "hit" and COLOR_HIT or COLOR_FREE
-        local count = #points
-        if count < 2 then
-            hide()
-            return
-        end
-        local used = math.min(SEGMENTS, count - 1)
-        local prev = points[1]
-        local lastDir = (points[count] - points[count - 1])
-        for i = 1, SEGMENTS do
-            local seg = segs[i]
-            if i <= used then
-                local nextPoint = points[1 + math.floor(i * (count - 1) / used)]
-                local offset = nextPoint - prev
-                if offset.Magnitude > 0.01 then
-                    seg.Size = Vector3.new(0.14, 0.14, offset.Magnitude)
-                    seg.CFrame = CFrame.lookAt((prev + nextPoint) / 2, nextPoint)
-                    seg.Color = color
-                    seg.Transparency = 0.1
-                    lastDir = offset
-                else
-                    seg.Transparency = 1
-                end
-                prev = nextPoint
-            else
-                seg.Transparency = 1
-            end
-        end
-        local tip = points[count]
-        local heading = lastDir.Magnitude > 0.001 and lastDir.Unit or Vector3.new(0, 0, 1)
-        local pulse = 1.4 + 0.3 * math.sin(os.clock() * 8)
-        marker.Size = Vector3.new(pulse, pulse, pulse)
-        marker.Position = tip
-        marker.Color = color
-        marker.Transparency = 0.3
-        hitbox.CFrame = CFrame.lookAt(tip - heading * (SPEAR_LENGTH / 2), tip)
-        hitbox.Color = color
-        hitbox.Transparency = 0.65
-        local text = string.format("%d studs", math.floor((tip - origin).Magnitude + 0.5))
-        if kind == "hit" and char then
-            text = text .. "  |  " .. char.Name
-        end
-        label.Text = text
-        gui.Enabled = true
-        if glowChar then
-            targetGlow.Adornee = glowChar
-            targetGlow.FillColor = COLOR_HIT
-            targetGlow.OutlineColor = COLOR_HIT
-        else
-            targetGlow.Adornee = nil
-        end
-    end
-
-    local connection = RunService.RenderStepped:Connect(function()
+    local connection = MXTrack(RunService.RenderStepped:Connect(function()
         local startedAt = _G.MX.SpearCharge
         if not Preview.enabled or not startedAt or os.clock() - startedAt > 8 then
             hide()
@@ -242,7 +187,6 @@ return function(ctx)
             hide()
             return
         end
-        local speed = MAX_SPEED
         local origin = head.Position
         local dir = cam.CFrame.LookVector
         local everyone = {}
@@ -251,29 +195,18 @@ return function(ctx)
                 everyone[#everyone + 1] = plr.Character
             end
         end
-        local list = survivors()
-        local points, kind, hitChar = Preview.simulate(origin, dir, speed, list, everyone)
-        local glowChar = hitChar
-        if kind ~= "hit" and _G.MX.AimConfig.Aim_SilentVeilV2 and _G.MX.SpearAim then
-            if os.clock() - lastPlanAt > 0.1 then
-                lastPlanAt = os.clock()
-                lastPlan, lastPlanOrigin = _G.MX.SpearAim(origin, dir, speed)
-            end
-            if lastPlan then
-                local moved = lastPlanOrigin and (lastPlanOrigin - origin).Magnitude > 0.01
-                local vPoints, vKind, vChar = Preview.simulate(lastPlanOrigin or origin, lastPlan, speed, list, everyone)
-                if moved then
-                    local target = _G.MX.PickSurvivor and _G.MX.PickSurvivor()
-                    if target then
-                        kind, glowChar, hitChar = "hit", target, target
-                    end
-                elseif vKind == "hit" then
-                    points, kind, hitChar, glowChar = vPoints, "hit", vChar, vChar
-                end
-            end
-        end
-        draw(points, kind, hitChar, origin, glowChar)
-    end)
+        local points = Preview.simulate(origin, dir, MAX_SPEED, survivors(), everyone)
+        local reach = math.clamp((points[#points] - origin):Dot(dir), 6, MAX_RANGE)
+        local startPos = origin + dir * SPAWN_OFFSET - cam.CFrame.UpVector * 0.5
+        local tip = origin + dir * reach
+        att0.WorldPosition = startPos
+        att1.WorldPosition = tip
+        beam.Enabled = true
+        marker.Position = tip
+        marker.Transparency = 0.3
+        label.Text = string.format("%d studs", math.floor(reach + 0.5))
+        gui.Enabled = true
+    end))
 
     Card:AddToggle("Highlight", true, function(on)
         Preview.enabled = on

@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
 local CollectionService, IsDowned, KillerAbilityCard, SilentCard, Players, ReplicatedStorage, UserInputService, localPlayer = ctx.CollectionService, ctx.IsDowned, ctx.KillerAbilityCard, ctx.SilentCard, ctx.Players, ctx.ReplicatedStorage, ctx.UserInputService, ctx.localPlayer
 do
     local RS = game:GetService("RunService")
@@ -212,7 +213,7 @@ do
         if flat.Magnitude > 0.2 and look.Magnitude > 0.001 and flat.Unit:Dot(look.Unit) < CHAIN_MIN_DOT then
             return nil
         end
-        return delta.Unit
+        return delta.Unit, root.Parent
     end
 
     SilentCard:AddToggle("Silent Chain", false, function(on)
@@ -232,24 +233,24 @@ do
         local ok2, a2 = pcall(keybinds.matches, "ability2", input)
         return (ok and a1) or (ok2 and a2)
     end
-    UserInputService.InputBegan:Connect(function(input)
+    MXTrack(UserInputService.InputBegan:Connect(function(input)
         if isSkillInput(input) then
             HL.held[input] = true
         end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
+    end))
+    MXTrack(UserInputService.InputEnded:Connect(function(input)
         if HL.held[input] then
             HL.held[input] = nil
             HL.releaseAt = os.clock()
         end
-    end)
+    end))
 
     KillerAbilityCard:AddToggle("Aim Lock (Hidden)", false, function(on)
         KA.hiddenOn = on
         HL.target = nil
     end, {Flag = "AimLockHidden"})
 
-    RS.Heartbeat:Connect(function(dt)
+    MXTrack(RS.Heartbeat:Connect(function(dt)
         if not KA.hiddenOn then
             return
         end
@@ -294,7 +295,7 @@ do
         local goal = CFrame.lookAt(hrp.Position, Vector3.new(aimPos.X, hrp.Position.Y, aimPos.Z))
         local turned = hrp.CFrame:Lerp(goal, alpha)
         hrp.CFrame = CFrame.new(hrp.Position) * (turned - turned.Position)
-    end)
+    end))
 
     local S = {on = false, holding = false, started = nil, lastHold = 0}
 

@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
 local EspMasterCard, Players, RunService, lib, localPlayer = ctx.EspMasterCard, ctx.Players, ctx.RunService, ctx.lib, ctx.localPlayer
 do
     local Overlay = {faceOn = false, coneOn = false, conn = nil, acc = 0}
@@ -100,13 +101,13 @@ do
         if Overlay.faceOn or Overlay.coneOn then
             if not Overlay.conn then
                 Overlay.acc = 1
-                Overlay.conn = RunService.Heartbeat:Connect(function(dt)
+                Overlay.conn = MXTrack(RunService.Heartbeat:Connect(function(dt)
                     Overlay.acc += dt
                     if Overlay.acc >= 0.5 then
                         Overlay.acc = 0
                         pcall(refresh)
                     end
-                end)
+                end))
             end
         elseif Overlay.conn then
             Overlay.conn:Disconnect()

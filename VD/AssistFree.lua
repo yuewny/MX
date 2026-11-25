@@ -1,4 +1,5 @@
 return function(ctx)
+local MXTrack = getgenv().MXHUB_Track or function(c) return c end
 local CollectionService, Players, ReplicatedStorage, TrapCard, localPlayer = ctx.CollectionService, ctx.Players, ctx.ReplicatedStorage, ctx.TrapCard, ctx.localPlayer
     do
         local Help = {on = false, range = 15, busy = false, rejectedAt = 0, beganAt = 0, skip = {}}
@@ -17,7 +18,7 @@ local CollectionService, Players, ReplicatedStorage, TrapCard, localPlayer = ctx
                 task.wait(0.5)
             end
             if rem then
-                rem.OnClientEvent:Connect(function(msg, ...)
+                MXTrack(rem.OnClientEvent:Connect(function(msg, ...)
                     if msg == "rejected" then
                         Help.rejectedAt = os.clock()
                     elseif msg == "began" then
@@ -26,7 +27,7 @@ local CollectionService, Players, ReplicatedStorage, TrapCard, localPlayer = ctx
 
                         warn("[MXHUB] AssistFree server ->", msg, ...)
                     end
-                end)
+                end))
             end
         end)
 
