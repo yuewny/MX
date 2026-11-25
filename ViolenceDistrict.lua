@@ -3488,7 +3488,7 @@ do
             local dir = chosen or fallbackLow or payload.Direction
             local outOrigin = origin
 
-            if not chosen and _G.MX.AimConfig.Veil_Direct then
+            if (not chosen or (root.Position - origin).Magnitude > 60) and _G.MX.AimConfig.Veil_Direct then
                 local bodyPos = (model:FindFirstChild("HumanoidRootPart") or targetPart).Position
                 local ownRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
                 local toMe = ownRoot and Vector3.new(ownRoot.Position.X - bodyPos.X, 0, ownRoot.Position.Z - bodyPos.Z) or Vector3.new(0, 0, 1)
@@ -3497,6 +3497,8 @@ do
                 local approaches = {
                     toMe * 4, side * 4, -side * 4, -toMe * 4,
                     toMe * 4 + Vector3.new(0, 3, 0), Vector3.new(0, 5, 0),
+                    toMe * 7, side * 7, -side * 7, -toMe * 7,
+                    Vector3.new(0, 9, 0), toMe * 3 + Vector3.new(0, 6, 0),
                 }
                 local rp = RaycastParams.new()
                 rp.FilterType = Enum.RaycastFilterType.Exclude
@@ -3576,7 +3578,10 @@ do
 
         _G.MX.SpearAim = function(origin, dir, speed)
             local ok, out = pcall(veilAimPayload, {Direction = dir, Origin = origin, SpeedOverride = speed})
-            return ok and out and out.Direction or nil
+            if ok and out then
+                return out.Direction, out.Origin
+            end
+            return nil
         end
 
         _G.MX.VeilPing = 0
@@ -3673,7 +3678,8 @@ do
                             local okAng, ang = pcall(function()
                                 return math.deg(math.acos(math.clamp(payload.Direction.Unit:Dot(newPayload.Direction.Unit), -1, 1)))
                             end)
-                            if okAng and ang <= 85 then
+                            local moved = (newPayload.Origin - payload.Origin).Magnitude > 0.01
+                            if okAng and (moved or ang <= 85) then
                                 pcall(reportVeil, string.format("arah diubah %.1f derajat", ang))
                                 payload = newPayload
                             else
