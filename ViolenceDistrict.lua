@@ -3307,10 +3307,7 @@ do
             local flatVel = Vector3.new(vel.X, 0, vel.Z)
             local vy = airborne and vel.Y or 0
             local worldG = workspace.Gravity
-            local pingLead = 0
-            pcall(function()
-                pingLead = math.clamp(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() / 1000, 0, 0.12) * 0.5
-            end)
+            local pingLead = math.clamp(_G.MX.VeilPing or 0, 0, 0.12) * 0.5
 
             local everyone = {}
             for _, pl in ipairs(Players:GetPlayers()) do
@@ -3581,6 +3578,22 @@ do
             local ok, out = pcall(veilAimPayload, {Direction = dir, Origin = origin, SpeedOverride = speed})
             return ok and out and out.Direction or nil
         end
+
+        _G.MX.VeilPing = 0
+        local pingAlive = true
+        task.spawn(function()
+            while pingAlive do
+                pcall(function()
+                    _G.MX.VeilPing = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+                end)
+                task.wait(1)
+            end
+        end)
+        pcall(function()
+            lib.API.Track(function()
+                pingAlive = false
+            end)
+        end)
 
         local lastVeilReport = 0
         local function reportVeil(message)
