@@ -1201,6 +1201,11 @@ do
                 local anim = resolveParryAnimation(character)
                 if anim and animator then
                     pcall(function()
+                        for _, playingTrack in ipairs(animator:GetPlayingAnimationTracks()) do
+                            if playingTrack.Animation and playingTrack.Animation.AnimationId == anim.AnimationId then
+                                playingTrack:Stop(0)
+                            end
+                        end
                         local track = animator:LoadAnimation(anim)
                         track.Priority = Enum.AnimationPriority.Action
                         track:Play()
@@ -3616,6 +3621,7 @@ do
                 if _G.MX.NoFall.Enabled and fall and arg == fall then
                     local tbl7 = {...}
                     tbl7[1] = 0
+                    setnamecallmethod(v8)
                     return namecall(arg, unpack(tbl7))
                 end
 
@@ -3792,6 +3798,7 @@ do
                 end
             end
 
+            setnamecallmethod(v8)
             return namecall(arg, ...)
         end)
 
