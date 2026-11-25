@@ -3650,13 +3650,20 @@ do
                     local payload = (...)
                     if _G.MX.AimConfig.Aim_SilentVeilV2 then
                         local okAim, newPayload = pcall(veilAimPayload, payload)
-                        if okAim and newPayload then
-                            reportVeil(string.format("arah diubah %.1f derajat", math.deg(math.acos(math.clamp(payload.Direction.Unit:Dot(newPayload.Direction.Unit), -1, 1)))))
-                            payload = newPayload
+                        if okAim and newPayload and typeof(newPayload) == "table" and typeof(newPayload.Direction) == "Vector3" then
+                            local okAng, ang = pcall(function()
+                                return math.deg(math.acos(math.clamp(payload.Direction.Unit:Dot(newPayload.Direction.Unit), -1, 1)))
+                            end)
+                            if okAng and ang <= 85 then
+                                pcall(reportVeil, string.format("arah diubah %.1f derajat", ang))
+                                payload = newPayload
+                            else
+                                pcall(reportVeil, "sudut terlalu besar, lemparan asli dipakai")
+                            end
                         elseif okAim then
-                            reportVeil("tidak ada target survivor")
+                            pcall(reportVeil, "tidak ada target survivor")
                         else
-                            reportVeil("error: " .. tostring(newPayload))
+                            pcall(reportVeil, "error: " .. tostring(newPayload))
                         end
                     end
                     local tracker = _G.MX.Tracker
