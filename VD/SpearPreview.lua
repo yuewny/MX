@@ -7,7 +7,6 @@ return function(ctx)
     local MAX_LIFE = 4
     local SPEAR_LENGTH = 7.6
     local STEP = 0.04
-    local MAX_RANGE = 260
     local BODY = {"Head", "Torso", "UpperTorso", "LowerTorso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
     local COLOR_FREE = Color3.fromRGB(255, 255, 255)
@@ -135,8 +134,11 @@ return function(ctx)
         return part
     end
 
-    local halo = newPart(Vector3.new(0.35, 0.35, 1))
-    local core = newPart(Vector3.new(0.09, 0.09, 1))
+    local SEGMENTS = 40
+    local segs = {}
+    for i = 1, SEGMENTS do
+        segs[i] = newPart(Vector3.new(0.14, 0.14, 1))
+    end
     local targetGlow = Instance.new("Highlight")
     targetGlow.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     targetGlow.FillTransparency = 0.55
@@ -162,35 +164,48 @@ return function(ctx)
     label.Parent = gui
 
     local function hide()
-        core.Transparency = 1
-        halo.Transparency = 1
+        for i = 1, SEGMENTS do
+            segs[i].Transparency = 1
+        end
         targetGlow.Adornee = nil
         marker.Transparency = 1
         hitbox.Transparency = 1
         gui.Enabled = false
     end
 
-    local lastPlan, lastPlanAt = nil, 0
-    local lastPick, lastPickAt = nil, 0
+    local lastPlan, lastPlanOrigin, lastPlanAt = nil, nil, 0
 
-    local function draw(tip, kind, char, origin, startPos, glowChar)
+    local function draw(points, kind, char, origin, glowChar)
         local color = kind == "hit" and COLOR_HIT or COLOR_FREE
-        local offset = tip - startPos
-        local length = offset.Magnitude
-        if length < 0.5 then
+        local count = #points
+        if count < 2 then
             hide()
             return
         end
-        local heading = offset.Unit
-        local middle = CFrame.lookAt((startPos + tip) / 2, tip)
-        core.Size = Vector3.new(0.09, 0.09, length)
-        core.CFrame = middle
-        core.Color = color
-        core.Transparency = 0.05
-        halo.Size = Vector3.new(0.35, 0.35, length)
-        halo.CFrame = middle
-        halo.Color = color
-        halo.Transparency = 0.8
+        local used = math.min(SEGMENTS, count - 1)
+        local prev = points[1]
+        local lastDir = (points[count] - points[count - 1])
+        for i = 1, SEGMENTS do
+            local seg = segs[i]
+            if i <= used then
+                local nextPoint = points[1 + math.floor(i * (count - 1) / used)]
+                local offset = nextPoint - prev
+                if offset.Magnitude > 0.01 then
+                    seg.Size = Vector3.new(0.14, 0.14, offset.Magnitude)
+                    seg.CFrame = CFrame.lookAt((prev + nextPoint) / 2, nextPoint)
+                    seg.Color = color
+                    seg.Transparency = 0.1
+                    lastDir = offset
+                else
+                    seg.Transparency = 1
+                end
+                prev = nextPoint
+            else
+                seg.Transparency = 1
+            end
+        end
+        local tip = points[count]
+        local heading = lastDir.Magnitude > 0.001 and lastDir.Unit or Vector3.new(0, 0, 1)
         local pulse = 1.4 + 0.3 * math.sin(os.clock() * 8)
         marker.Size = Vector3.new(pulse, pulse, pulse)
         marker.Position = tip
@@ -207,9 +222,8 @@ return function(ctx)
         gui.Enabled = true
         if glowChar then
             targetGlow.Adornee = glowChar
-            local glow = COLOR_HIT
-            targetGlow.FillColor = glow
-            targetGlow.OutlineColor = glow
+            targetGlow.FillColor = COLOR_HIT
+            targetGlow.OutlineColor = COLOR_HIT
         else
             targetGlow.Adornee = nil
         end
@@ -243,19 +257,22 @@ return function(ctx)
         if kind ~= "hit" and _G.MX.AimConfig.Aim_SilentVeilV2 and _G.MX.SpearAim then
             if os.clock() - lastPlanAt > 0.1 then
                 lastPlanAt = os.clock()
-                lastPlan = _G.MX.SpearAim(origin, dir, speed)
+                lastPlan, lastPlanOrigin = _G.MX.SpearAim(origin, dir, speed)
             end
             if lastPlan then
-                local vPoints, vKind, vChar = Preview.simulate(origin, lastPlan, speed, list, everyone)
-                if vKind == "hit" then
+                local moved = lastPlanOrigin and (lastPlanOrigin - origin).Magnitude > 0.01
+                local vPoints, vKind, vChar = Preview.simulate(lastPlanOrigin or origin, lastPlan, speed, list, everyone)
+                if moved then
+                    local target = _G.MX.PickSurvivor and _G.MX.PickSurvivor()
+                    if target then
+                        kind, glowChar, hitChar = "hit", target, target
+                    end
+                elseif vKind == "hit" then
                     points, kind, hitChar, glowChar = vPoints, "hit", vChar, vChar
                 end
             end
         end
-        local arm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("Torso")
-        local startPos = arm and arm.Position or origin
-        local reach = math.clamp((points[#points] - origin):Dot(dir), 5, MAX_RANGE)
-        draw(origin + dir * reach, kind, hitChar, origin, startPos, glowChar)
+        draw(points, kind, hitChar, origin, glowChar)
     end)
 
     Card:AddToggle("Highlight", true, function(on)
