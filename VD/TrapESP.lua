@@ -111,31 +111,42 @@ local CollectionService, localPlayer = ctx.CollectionService, ctx.localPlayer
                                 if not e or not e.hl.Parent or not e.gui.Parent then
                                     clear(model)
                                     local hl = Instance.new("Highlight")
-                                    hl.FillTransparency = 0.5
+                                    hl.FillTransparency = 0.78
+                                    hl.OutlineTransparency = 0.1
                                     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                                     hl.Adornee = model
                                     hl.Parent = model
                                     local gui = Instance.new("BillboardGui")
-                                    gui.Size = UDim2.fromOffset(120, 26)
+                                    gui.Size = UDim2.fromOffset(110, 22)
+                                    gui.MaxDistance = 350
                                     gui.StudsOffset = Vector3.new(0, 3, 0)
                                     gui.AlwaysOnTop = true
                                     gui.Adornee = part
                                     gui.Parent = part
                                     local label = Instance.new("TextLabel")
                                     label.Size = UDim2.fromScale(1, 1)
-                                    label.BackgroundTransparency = 1
-                                    label.Font = Enum.Font.GothamBold
-                                    label.TextSize = 13
-                                    label.TextStrokeTransparency = 0.4
+                                    label.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+                                    label.BackgroundTransparency = 0.25
+                                    label.Font = Enum.Font.GothamMedium
+                                    label.TextSize = 12
+                                    label.TextStrokeTransparency = 1
                                     label.Parent = gui
-                                    e = {hl = hl, gui = gui, label = label}
+                                    local corner = Instance.new("UICorner")
+                                    corner.CornerRadius = UDim.new(0, 11)
+                                    corner.Parent = label
+                                    local stroke = Instance.new("UIStroke")
+                                    stroke.Thickness = 1
+                                    stroke.Transparency = 0.35
+                                    stroke.Parent = label
+                                    e = {hl = hl, gui = gui, label = label, stroke = stroke}
                                     T.items[model] = e
                                 end
                                 e.hl.FillColor = color
                                 e.hl.OutlineColor = color
                                 e.label.TextColor3 = color
+                                e.stroke.Color = color
                                 local dist = root and math.floor((part.Position - root.Position).Magnitude) or 0
-                                e.label.Text = string.format("⚠ %s [%d]", armed and "Trap" or "Trap (off)", dist)
+                                e.label.Text = string.format("%s · %dm", armed and "Trap" or "Trap (off)", dist)
                             end
                         end
                         for model in pairs(T.items) do

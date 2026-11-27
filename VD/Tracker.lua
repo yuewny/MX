@@ -2,6 +2,7 @@ return function(ctx)
 local MXTrack = getgenv().MXHUB_Track or function(c) return c end
     local Players, ReplicatedStorage, RunService, localPlayer, lib = ctx.Players, ctx.ReplicatedStorage, ctx.RunService, ctx.localPlayer, ctx.lib
 
+    local HOT = Color3.fromRGB(255, 244, 214)
     local CORE = Color3.fromRGB(255, 150, 30)
     local HALO = Color3.fromRGB(255, 110, 0)
     local LIFE = 1.2
@@ -41,9 +42,11 @@ local MXTrack = getgenv().MXHUB_Track or function(c) return c end
             return
         end
         table.insert(segments, {
-            core = newPart(a, b, CORE, width, 0, Enum.Material.Neon),
+            core = newPart(a, b, HOT, width, 0, Enum.Material.Neon),
             halo = newPart(a, b, HALO, width * 3.2, 0.62, Enum.Material.Neon),
             born = os.clock(),
+            width = width,
+            len = (b - a).Magnitude + 0.05,
         })
         while #segments > MAX_SEGMENTS do
             local old = table.remove(segments, 1)
@@ -115,9 +118,14 @@ local MXTrack = getgenv().MXHUB_Track or function(c) return c end
                 seg.halo:Destroy()
                 table.remove(segments, i)
             else
-                local fade = age * age
+                local fade = age * age * (3 - 2 * age)
+                local heat = math.clamp(age * 3, 0, 1)
+                local w = seg.width * (1 - 0.7 * fade)
+                seg.core.Color = HOT:Lerp(CORE, heat)
                 seg.core.Transparency = 0.05 + 0.95 * fade
                 seg.halo.Transparency = 0.62 + 0.38 * fade
+                seg.core.Size = Vector3.new(w, w, seg.len)
+                seg.halo.Size = Vector3.new(w * 3.2, w * 3.2, seg.len)
                 i = i + 1
             end
         end
