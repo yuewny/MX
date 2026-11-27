@@ -109,18 +109,18 @@ local MX_BUILD = (function()
 	Library:SetChangelog({
 		{ Version = "2.3", Entries = {
 			{ "Melee Aimbot", "up" },
-			{ "Silent Flask", "up" },
-			{ "Silent Chain", "up" },
+			{ "Silent Aim Cure", "up" },
+			{ "Silent Aim Butcher", "up" },
 			{ "Silent Aim Flashlight", "up" },
 			{ "Spear Tracker", "up" },
-			{ "Auto Parry per skin", "up" },
-			{ "TOF semua skin", "up" },
+			{ "Auto Parry", "up" },
+			{ "TOF", "up" },
 			{ "No Slowdown Survivor", "up" },
-			{ "Killer ESP gabungan", "up" },
+			{ "Killer ESP", "up" },
 			{ "Emote", "up" },
 			{ "Silent Aim TOF", "fix" },
-			{ "Silent Veil", "fix" },
-			{ "Skill Check Generator Instant", "fix" },
+			{ "Silent Aim Veil", "fix" },
+			{ "Skill Check Generator", "fix" },
 			{ "Self Heal", "down" },
 			{ "Fake Parry", "down" },
 			{ "Auto Attack", "down" },
@@ -1142,6 +1142,20 @@ do
         end
     end
 
+    _G.MX.ParryReach = function(myRoot, killerRoot)
+        local radius = _G.MX.ParryConfig.ParryRadius
+        local ok, extra = pcall(function()
+            local toMe = myRoot.Position - killerRoot.Position
+            if toMe.Magnitude < 0.1 then
+                return 0
+            end
+            local closing = killerRoot.AssemblyLinearVelocity:Dot(toMe.Unit) - myRoot.AssemblyLinearVelocity:Dot(toMe.Unit)
+            local lead = 0.04 + math.clamp(_G.MX.VeilPing or 0, 0, 0.3) * 0.5
+            return math.clamp(closing, 0, 70) * lead
+        end)
+        return radius + (ok and extra or 0)
+    end
+
     ExecuteParry = function(killerRoot)
         if _G.MX.State.ParryCooldown then
             return false
@@ -1496,7 +1510,7 @@ do
             end
 
             if _G.MX.ParryConfig.ParryAggressive then
-                if _G.MX.ParryConfig.ParryRadius < magnitude then
+                if _G.MX.ParryReach(humanoidRootPart, humanoidRootPart2) < magnitude then
                     return
                 end
 
@@ -1509,7 +1523,7 @@ do
                         return true
                     end
 
-                    if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude > _G.MX.ParryConfig.ParryRadius then
+                    if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude > _G.MX.ParryReach(humanoidRootPart, humanoidRootPart2) then
                         return false
                     end
                     return ExecuteParry(humanoidRootPart2)
@@ -1527,7 +1541,7 @@ do
                     end
                 end))
             else
-                local n = _G.MX.ParryConfig.ParryRadius
+                local n = _G.MX.ParryReach(humanoidRootPart, humanoidRootPart2)
 
                 if magnitude <= n and ExecuteParry(humanoidRootPart2) then
                     return
@@ -1537,7 +1551,7 @@ do
 
                 connection = MXTrack(RunService.Heartbeat:Connect(function()
                     if os.clock() - now < 0.6 and not _G.MX.State.ParryCooldown and humanoidRootPart and humanoidRootPart2 and humanoidRootPart.Parent and humanoidRootPart2.Parent and not IsDowned(character) then
-                        if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude <= n and ExecuteParry(humanoidRootPart2) then
+                        if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude <= _G.MX.ParryReach(humanoidRootPart, humanoidRootPart2) and ExecuteParry(humanoidRootPart2) then
                             if connection then
                                 connection:Disconnect()
                             end
@@ -1989,23 +2003,14 @@ do
             return
         end
         n2 = tick()
-        table.clear(tbl.Generators)
-        table.clear(tbl.Windows)
-        table.clear(tbl.Pallets)
-        table.clear(tbl.Hooks)
-        table.clear(tbl.Gates)
-        table.clear(tbl4.Generators)
-        table.clear(tbl4.Windows)
-        table.clear(tbl4.Pallets)
-        table.clear(tbl4.Hooks)
-        table.clear(tbl4.Gates)
-        table.clear(tbl4.SCPs)
+        local ntbl = {Generators = {}, Windows = {}, Pallets = {}, Hooks = {}, Gates = {}}
+        local ntbl4 = {Generators = {}, Windows = {}, Pallets = {}, Hooks = {}, Gates = {}, SCPs = {}}
         local map = workspace:FindFirstChild("Map")
         local v4 = map or workspace
         local descendants = v4:GetDescendants()
 
         for i, descendant in ipairs(descendants) do
-            if i % 200 == 0 then
+            if i % 1500 == 0 then
                 task.wait()
             end
 
@@ -2018,25 +2023,25 @@ do
 
                     if basePart then
                         local tbl6 = {model = descendant, part = basePart}
-                        table.insert(tbl.Generators, tbl6)
-                        table.insert(tbl4.Generators, tbl6)
+                        table.insert(ntbl.Generators, tbl6)
+                        table.insert(ntbl4.Generators, tbl6)
                     end
                 elseif v5 == "hook" and descendant:FindFirstChild("HookPoint") then
-                    table.insert(tbl.Hooks, descendant)
-                    table.insert(tbl4.Hooks, descendant)
+                    table.insert(ntbl.Hooks, descendant)
+                    table.insert(ntbl4.Hooks, descendant)
                 elseif v5 == "gate" and descendant:FindFirstChild("ExitLever") then
-                    table.insert(tbl.Gates, descendant)
-                    table.insert(tbl4.Gates, descendant)
+                    table.insert(ntbl.Gates, descendant)
+                    table.insert(ntbl4.Gates, descendant)
                 elseif v5 == "window" then
-                    table.insert(tbl.Windows, descendant)
-                    table.insert(tbl4.Windows, descendant)
+                    table.insert(ntbl.Windows, descendant)
+                    table.insert(ntbl4.Windows, descendant)
                 end
             elseif descendant:IsA("BasePart") and descendant.Name == "PrimaryPartPallet" then
                 local parent = descendant.Parent
 
-                if parent and not table.find(tbl.Pallets, parent) then
-                    table.insert(tbl.Pallets, parent)
-                    table.insert(tbl4.Pallets, parent)
+                if parent and not table.find(ntbl.Pallets, parent) then
+                    table.insert(ntbl.Pallets, parent)
+                    table.insert(ntbl4.Pallets, parent)
                 end
             end
         end
@@ -2044,28 +2049,52 @@ do
         local descendants2 = workspace:GetDescendants()
 
         for i, v5 in ipairs(descendants2) do
-            if i % 200 == 0 then
+            if i % 1500 == 0 then
                 task.wait()
             end
 
-            if v5:IsA("Model") and string.match(string.lower(v5.Name), "^scp") and not table.find(tbl4.SCPs, v5) then
-                table.insert(tbl4.SCPs, v5)
+            if v5:IsA("Model") and string.match(string.lower(v5.Name), "^scp") and not table.find(ntbl4.SCPs, v5) then
+                table.insert(ntbl4.SCPs, v5)
             end
         end
 
         for _, tagged in ipairs(CollectionService:GetTagged("scp")) do
             local model = tagged:IsA("Model") and tagged or tagged:FindFirstAncestorOfClass("Model")
-            if model and not table.find(tbl4.SCPs, model) then
-                table.insert(tbl4.SCPs, model)
+            if model and not table.find(ntbl4.SCPs, model) then
+                table.insert(ntbl4.SCPs, model)
             end
         end
         for _, point in ipairs(CollectionService:GetTagged("VaultPoint")) do
             local model = point.Parent
-            if model and string.lower(model.Name) == "window" and not table.find(tbl4.Windows, model) then
-                table.insert(tbl.Windows, model)
-                table.insert(tbl4.Windows, model)
+            if model and model ~= workspace and model:IsDescendantOf(workspace) and not table.find(ntbl4.Windows, model) then
+                local lname = string.lower(model.Name)
+                if lname == "window" or lname:find("window") or lname:find("vault") then
+                    table.insert(ntbl.Windows, model)
+                    table.insert(ntbl4.Windows, model)
+                end
             end
         end
+        for _, point in ipairs(CollectionService:GetTagged("PalletPoint")) do
+            local model = point.Parent
+            if model and model ~= workspace and model:IsDescendantOf(workspace) and not table.find(ntbl4.Pallets, model) then
+                table.insert(ntbl.Pallets, model)
+                table.insert(ntbl4.Pallets, model)
+            end
+        end
+        for _, model in ipairs(CollectionService:GetTagged("pallet")) do
+            if model:IsA("Model") and model:IsDescendantOf(workspace) and not table.find(ntbl4.Pallets, model) then
+                table.insert(ntbl.Pallets, model)
+                table.insert(ntbl4.Pallets, model)
+            end
+        end
+        for _, key in ipairs({"Generators", "Windows", "Pallets", "Hooks", "Gates"}) do
+            table.clear(tbl[key])
+            table.clear(tbl4[key])
+            for _, item in ipairs(ntbl[key]) do table.insert(tbl[key], item) end
+            for _, item in ipairs(ntbl4[key]) do table.insert(tbl4[key], item) end
+        end
+        table.clear(tbl4.SCPs)
+        for _, item in ipairs(ntbl4.SCPs) do table.insert(tbl4.SCPs, item) end
     end
 
     fn3 = function(arg)
@@ -3045,92 +3074,52 @@ do
                 if not line or not goal then
                     return
                 end
-                local flag4 = _G.MX.Auto.SkillCheckMode == "Instant" or (forced and not _G.MX.Auto.SkillCheck)
-                if flag4 and (_G.MX.State.instantFails or 0) >= 2 then
-                    flag4 = false
+                local mode = _G.MX.Auto.SkillCheckMode
+                local useNormal = mode == "Normal" or (mode == "Random" and _G.MX.State.RandomMode_IsNormal)
+                local lo, hi = 102, 116
+                if useNormal then
+                    lo, hi = 116, 140
                 end
+                local center = (lo + hi) / 2
 
-                if not flag4 then
-                    flag4 = _G.MX.Auto.SkillCheckMode == "Random"
-
-                    if flag4 then
-                        if _G.MX.State.RandomMode_IsNormal then
-                            flag4 = false
-                        else
-                            flag4 = true
-                        end
+                local now = os.clock()
+                local rot = line.Rotation % 360
+                local goalRot = goal.Rotation % 360
+                local st = _G.MX.State.SkillTrack
+                if not st or st.check ~= check or math.abs(st.goal - goalRot) > 0.5 then
+                    st = {check = check, goal = goalRot, last = nil, lastT = now, vel = 277, dt = 1 / 60, fired = false}
+                    _G.MX.State.SkillTrack = st
+                end
+                if st.last then
+                    local dt = now - st.lastT
+                    local dRot = (rot - st.last) % 360
+                    if dt > 0.0005 and dRot < 180 then
+                        st.vel = st.vel * 0.6 + (dRot / dt) * 0.4
+                        st.dt = st.dt * 0.7 + math.min(dt, 0.2) * 0.3
                     end
                 end
+                st.last, st.lastT = rot, now
 
-                if flag4 then
-                    local lockGoal = goal.Rotation
-                    line.Rotation = lockGoal + 109
-                    _G.MX.State.busy = true
-
-                    local lockConn = MXTrack(RunService.PreRender:Connect(function()
-                        if check.Visible and line.Parent and goal.Rotation == lockGoal then
-                            line.Rotation = lockGoal + 109
-                        end
-                    end))
-
-                    task.spawn(function()
-                        fn24(true)
-                        local t0 = os.clock()
-                        while os.clock() - t0 < 0.2 and check.Visible and goal.Rotation == lockGoal do
-                            task.wait()
-                        end
-                        if check.Visible and goal.Rotation == lockGoal then
-                            line.Rotation = lockGoal + 109
-                            fn24(false)
-                            task.wait(0.1)
-                        end
-                        if check.Visible and goal.Rotation == lockGoal then
-                            _G.MX.State.instantFails = (_G.MX.State.instantFails or 0) + 1
-                        end
-                        lockConn:Disconnect()
-                        task.wait(0.05)
-                        _G.MX.State.busy = false
-                    end)
-                else
-                    local randomModeIsNormal = _G.MX.Auto.SkillCheckMode == "Normal" or _G.MX.Auto.SkillCheckMode == "Random" and _G.MX.State.RandomMode_IsNormal
-                    local n3 = line.Rotation % 360
-                    local n4 = goal.Rotation % 360
-                    local n5, n6
-
-                    if randomModeIsNormal then
-                        n5 = (n4 + 116) % 360
-                        n6 = (n4 + 140) % 360
-                    else
-                        n5 = (n4 + 102) % 360
-                        n6 = (n4 + 116) % 360
-                    end
-
-                    local v4
-
-                    if n6 < n5 then
-                        local flag5 = n5 <= n3 or n3 <= n6
-                        v4 = flag5
-                    else
-                        local flag5 = n5 <= n3 and n3 <= n6
-                        v4 = flag5
-                    end
-
-                    if v4 then
+                if not st.fired then
+                    local rel = (rot - goalRot) % 360
+                    local remaining = (goalRot + center - rot) % 360
+                    local lead = st.dt * 1.5 + 0.01
+                    local inWindow = rel >= lo and rel <= hi
+                    if inWindow or (remaining <= st.vel * lead and remaining < 90 and rel < center) then
+                        st.fired = true
                         _G.MX.State.busy = true
-
                         task.spawn(function()
                             fn24()
-                            task.wait(0.05)
+                            task.wait(0.08)
                             _G.MX.State.busy = false
                         end)
                     end
                 end
-
                 return
             end
 
             _G.MX.State.RandomMode_IsNormal = false
-            _G.MX.State.instantFails = 0
+            _G.MX.State.SkillTrack = nil
         end))
     end
 
@@ -5895,8 +5884,11 @@ do
             end
         elseif arg == "Pallet" then
             for k, pallet in pairs(tbl4.Pallets) do
-                if pallet and pallet.Parent and pallet:FindFirstChild("PalletEH") then
-                    pallet.PalletEH:Destroy()
+                if pallet and pallet.Parent then
+                    local eh = pallet:FindFirstChild("PalletEH")
+                    if eh then eh:Destroy() end
+                    local t = pallet:FindFirstChild("PAL_Text", true)
+                    if t then t:Destroy() end
                 end
             end
         elseif arg == "Hook" then
@@ -5907,8 +5899,11 @@ do
             end
         elseif arg == "Window" then
             for k, window in pairs(tbl4.Windows) do
-                if window and window.Parent and window:FindFirstChild("WindowEH") then
-                    window.WindowEH:Destroy()
+                if window and window.Parent then
+                    local eh = window:FindFirstChild("WindowEH")
+                    if eh then eh:Destroy() end
+                    local t = window:FindFirstChild("WIN_Text", true)
+                    if t then t:Destroy() end
                 end
             end
         elseif arg == "Gate" then
@@ -6307,14 +6302,15 @@ do
                     local part = generator.part
                     local basePart = part or model:FindFirstChildWhichIsA("BasePart")
 
-                    if basePart and _G.MX.ESPConfig.MaxDistance < (currentCamera.CFrame.Position - basePart.Position).Magnitude then
+                    local finished = (tonumber(model:GetAttribute("RepairProgress")) or 0) >= 100
+                    if finished or (basePart and _G.MX.ESPConfig.MaxDistance < (currentCamera.CFrame.Position - basePart.Position).Magnitude) then
                         local geh = model:FindFirstChild("GEH")
 
                         if geh then
                             geh:Destroy()
                         end
 
-                        local geText = model:FindFirstChild("GE_Text")
+                        local geText = model:FindFirstChild("GE_Text") or (part and part:FindFirstChild("GE_Text")) or (basePart and basePart:FindFirstChild("GE_Text"))
 
                         if geText then
                             geText:Destroy()
@@ -6382,27 +6378,37 @@ do
         if _G.MX.ESPConfig.Pallet then
             for k, pallet in pairs(tbl4.Pallets) do
                 if pallet and pallet.Parent then
-                    local basePart = pallet:FindFirstChildWhichIsA("BasePart")
+                    local basePart = pallet:FindFirstChild("PrimaryPartPallet", true) or pallet:FindFirstChildWhichIsA("BasePart", true)
+                    local palletEH = pallet:FindFirstChild("PalletEH")
+                    local state = pallet:GetAttribute("PalletState")
+                    local dist = basePart and (currentCamera.CFrame.Position - basePart.Position).Magnitude or math.huge
 
-                    if basePart and _G.MX.ESPConfig.MaxDistance < (currentCamera.CFrame.Position - basePart.Position).Magnitude then
-                        local palletEH = pallet:FindFirstChild("PalletEH")
-
+                    if not basePart or state == "Broken" or dist > _G.MX.ESPConfig.MaxDistance then
                         if palletEH then
                             palletEH:Destroy()
                         end
-                    else
-                        local palletEH = pallet:FindFirstChild("PalletEH")
-                        local v5 = palletEH
-
-                        if not palletEH then
-                            local highlight2 = Instance.new("Highlight")
-                            v5 = highlight2
-                            highlight2.Name = "PalletEH"
-                            highlight2.Parent = pallet
+                        local oldText = basePart and basePart:FindFirstChild("PAL_Text")
+                        if oldText then
+                            oldText:Destroy()
                         end
-
-                        v5.Adornee = pallet
-                        _G.MX.Esp.styleHighlight(v5, _G.MX.ESPColors.Pallet)
+                    else
+                        if not palletEH then
+                            palletEH = Instance.new("Highlight")
+                            palletEH.Name = "PalletEH"
+                            palletEH.Parent = pallet
+                        end
+                        palletEH.Adornee = pallet
+                        local dropped = state == "Dropped"
+                        local color = dropped and Color3.fromRGB(255, 70, 70) or _G.MX.ESPColors.Pallet
+                        _G.MX.Esp.styleHighlight(palletEH, color)
+                        CreateModernESP(basePart, "PAL_Text", {
+                            name = "PALLET",
+                            infoRich = string.format("<font color=\"%s\">%s</font> <font color=\"#888888\">·</font> %dm", dropped and "#FF4646" or "#FF8000", dropped and "DROPPED" or "UP", math.floor(dist)),
+                            color = color,
+                            offsetY = 2.5,
+                            noSeparator = true,
+                            noDistScale = true,
+                        })
                     end
                 end
             end
@@ -6411,34 +6417,38 @@ do
         if _G.MX.ESPConfig.Window then
             for i, window in ipairs(tbl4.Windows) do
                 if window and window.Parent then
-                    local bottom = window:FindFirstChild("Bottom")
-                    local basePart = bottom or window:FindFirstChildWhichIsA("BasePart")
+                    local basePart = window:FindFirstChild("Bottom") or window:FindFirstChildWhichIsA("BasePart", true)
+                    local windowEH = window:FindFirstChild("WindowEH")
+                    local dist = basePart and (currentCamera.CFrame.Position - basePart.Position).Magnitude or math.huge
 
-                    if basePart and _G.MX.ESPConfig.MaxDistance < (currentCamera.CFrame.Position - basePart.Position).Magnitude then
-                        local windowEH = window:FindFirstChild("WindowEH")
-
+                    if not basePart or dist > _G.MX.ESPConfig.MaxDistance then
                         if windowEH then
                             windowEH:Destroy()
                         end
-                    elseif basePart then
-                        local windowEH = window:FindFirstChild("WindowEH")
-                        local v5 = windowEH
-
-                        if not windowEH then
-                            local boxHandleAdornment = Instance.new("BoxHandleAdornment")
-                            v5 = boxHandleAdornment
-                            boxHandleAdornment.Name = "WindowEH"
-                            boxHandleAdornment.Parent = window
-                            boxHandleAdornment.AlwaysOnTop = true
-                            boxHandleAdornment.ZIndex = 5
+                        local oldText = basePart and basePart:FindFirstChild("WIN_Text")
+                        if oldText then
+                            oldText:Destroy()
                         end
-
-                        v5.Adornee = basePart
-                        v5.Size = basePart.Size
-                        v5.Color3 = _G.MX.ESPColors.Window
-                        local outline = _G.MX.ESPConfig.Outline
-                        local transparency = outline and 0.8 or 0.4
-                        v5.Transparency = transparency
+                    else
+                        if windowEH and not windowEH:IsA("Highlight") then
+                            windowEH:Destroy()
+                            windowEH = nil
+                        end
+                        if not windowEH then
+                            windowEH = Instance.new("Highlight")
+                            windowEH.Name = "WindowEH"
+                            windowEH.Parent = window
+                        end
+                        windowEH.Adornee = window
+                        _G.MX.Esp.styleHighlight(windowEH, _G.MX.ESPColors.Window)
+                        CreateModernESP(basePart, "WIN_Text", {
+                            name = "WINDOW",
+                            infoRich = string.format("<font color=\"#00BEFF\">VAULT</font> <font color=\"#888888\">·</font> %dm", math.floor(dist)),
+                            color = _G.MX.ESPColors.Window,
+                            offsetY = 2.5,
+                            noSeparator = true,
+                            noDistScale = true,
+                        })
                     end
                 end
             end
@@ -7924,15 +7934,15 @@ do
     CameraCard = buildSection(M_Page, "Camera Settings", "camera")
     StreamerCard = buildSection(M_Page, "Streamer Mode", "eye-off")
     UtilityCard = buildSection(M_Page, "Players Utility", "user-cog")
-    PumpkinCard = buildSection(S_Page, "Pumpkin (Halloween)", "ghost")
+    PumpkinCard = buildSection(S_Page, "Pumpkin", "ghost")
     CrosshairBox = buildSection(M_Page, "Crosshair", "crosshair")
 
-    GenCard = buildSection(S_Page, "Generator Settings", "cpu")
-    VaultCard = buildSection(S_Page, "Vault & Pallet Slide", "wind")
-    AbilityCard = buildSection(S_Page, "Survivor Ability", "activity")
-    FakePerksCard = buildSection(S_Page, "Fake Perks", "wand")
-    SurvivorHealCard = buildSection(S_Page, "Heal & Bandage", "heart-pulse")
-    PistolSection = buildSection(S_Page, "TOF & Flashlight", "target")
+    GenCard = buildSection(S_Page, "Generator", "cpu")
+    VaultCard = buildSection(S_Page, "Vault", "wind")
+    AbilityCard = buildSection(S_Page, "Survivor Ability", "flame")
+    FakePerksCard = buildSection(S_Page, "Fake Perks", "star")
+    SurvivorHealCard = buildSection(S_Page, "Heal", "heart-pulse")
+    PistolSection = buildSection(S_Page, "TOF", "target")
 
     KillerAimbotCard = buildSection(K_Page, "Melee Aimbot", "swords")
     VeilCard = buildSection(K_Page, "Silent Aim Killer", "scan-line")
@@ -8047,7 +8057,7 @@ do
             end
         end)
 
-        MovementCard:AddToggle("No Slowdown (Survivor)", false, function(on)
+        MovementCard:AddToggle("No Slowdown", false, function(on)
             _G.MX.SurvivorNoSlowdown = on
             if on then
                 watchSlow()
@@ -8404,7 +8414,7 @@ MX.run("Pumpkin", {CollectionService = CollectionService, PumpkinCard = PumpkinC
 
     local TrapBot = {token = 0, running = false, holding = false}
 
-    TrapCard = TrapPage:CreateSection("Anti Trap", "alert-triangle")
+    TrapCard = TrapPage:CreateSection("Trap", "alert-triangle")
 
 
     pcall(function() TrapCard:_gb() end)
@@ -8606,7 +8616,7 @@ MX.run("Pumpkin", {CollectionService = CollectionService, PumpkinCard = PumpkinC
 
 MX.run("AutoDisarm", {CollectionService = CollectionService, GetRole = function(...) return GetRole(...) end, ReplicatedStorage = ReplicatedStorage, TrapCard = TrapCard, lib = lib, localPlayer = localPlayer})
 
-    GenCard:AddDropdown("Mode", {"Legit", "Instant", "Normal", "Random"}, false, function(skillCheckMode)
+    GenCard:AddDropdown("Mode", {"Legit", "Normal", "Random"}, false, function(skillCheckMode)
         _G.MX.Auto.SkillCheckMode = skillCheckMode
         _G.MX.State.RandomMode_IsNormal = false
     end, {Flag = "SkillCheckMode"})
@@ -8640,11 +8650,11 @@ end)
 
 _G.MX.AimConfig.Veil_Direct = true
 
-local v19 = VeilCard:AddToggle("Silent Veil (Spear)", false, function(aimSilentVeilV2)
+local v19 = VeilCard:AddToggle("Silent Aim Veil", false, function(aimSilentVeilV2)
     _G.MX.AimConfig.Aim_SilentVeilV2 = aimSilentVeilV2
 end)
 
-local v21 = KillerAbilityCard:AddToggle("Anti Blind (Flashlight)", false, function(antiBlindEnabled)
+local v21 = KillerAbilityCard:AddToggle("Anti Blind", false, function(antiBlindEnabled)
     _G.MX.AntiBlindEnabled = antiBlindEnabled
 end, {Flag = "AntiBlind"})
 
@@ -8683,7 +8693,7 @@ end, {Flag = "NoSlowdown"})
 MX.run("Perks", {K_Page = K_Page, ReplicatedStorage = ReplicatedStorage, S_Page = S_Page, localPlayer = localPlayer})
 
 do
-    local PS = S_Page:CreateSection("Auto Parry (Dagger)", "shield-check")
+    local PS = S_Page:CreateSection("Auto Parry", "swords")
     PS:AddToggle("Auto Parry", false, function(on)
         local cfg = _G.MX.ParryConfig
         cfg.AutoParry = on
@@ -8897,23 +8907,34 @@ end, {Flag = "RemoveTexture"})
 local v51 = EspPage:CreateSection("Map ESP", "map")
 MapCard = v51
 
+local function RefreshStaticESP(needScan)
+    task.spawn(function()
+        if needScan or #tbl4.Generators == 0 then
+            pcall(ScanMapESP, true)
+        end
+        if _G.MX.ESPConfig.Master then
+            pcall(UpdateStaticESP)
+        end
+    end)
+end
+
 MapCard:AddCheckbox("Generator ESP", false, function(generator)
     _G.MX.ESPConfig.Generator = generator
 
     if _G.MX.ESPConfig.Master then
         if generator then
-            ScanMapESP()
+            RefreshStaticESP()
         else
             ClearESP("Generator")
         end
     end
 end, {Flag = "GeneratorEsp"})
 
-MapCard:AddCheckbox("Generator Name & Progress", true, function(generatorName)
+MapCard:AddCheckbox("Generator Info", true, function(generatorName)
     _G.MX.ESPConfig.GeneratorName = generatorName
 
     if _G.MX.ESPConfig.Master then
-        ScanMapESP()
+        RefreshStaticESP()
     end
 end, {Flag = "GeneratorName"})
 
@@ -8922,7 +8943,7 @@ MapCard:AddCheckbox("Pallet ESP", false, function(pallet)
 
     if _G.MX.ESPConfig.Master then
         if pallet then
-            ScanMapESP()
+            RefreshStaticESP()
         else
             ClearESP("Pallet")
         end
@@ -8934,7 +8955,7 @@ MapCard:AddCheckbox("Window ESP", false, function(window)
 
     if _G.MX.ESPConfig.Master then
         if window then
-            ScanMapESP()
+            RefreshStaticESP()
         else
             ClearESP("Window")
         end
@@ -8946,7 +8967,7 @@ MapCard:AddCheckbox("Hook ESP", false, function(hook)
 
     if _G.MX.ESPConfig.Master then
         if hook then
-            ScanMapESP()
+            RefreshStaticESP()
         else
             ClearESP("Hook")
         end
@@ -8958,7 +8979,7 @@ MapCard:AddCheckbox("Gate ESP", false, function(gate)
 
     if _G.MX.ESPConfig.Master then
         if gate then
-            ScanMapESP()
+            RefreshStaticESP()
         else
             ClearESP("Gate")
         end
@@ -8970,7 +8991,7 @@ MapCard:AddCheckbox("SCP ESP", false, function(scp)
 
     if _G.MX.ESPConfig.Master then
         if scp then
-            ScanMapESP()
+            RefreshStaticESP()
         else
             ClearESP("SCP")
         end
