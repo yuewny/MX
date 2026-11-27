@@ -432,7 +432,7 @@ do
         end
     end
 
-    local SP = S_Page:CreateSection("Perks (Survivor)", "star")
+    local SP = S_Page:CreateSection("Perks", "award")
     SP:AddDropdown("Mode", {"Gen Boost", "Looping", "Medic"}, false, function(value)
         Surv.preset = option(value) or Surv.preset
     end, {Default = "Gen Boost", Flag = "SurvPerkPreset"})
@@ -444,7 +444,7 @@ do
     end, {Flag = "SurvAutoLevelPerks"})
     SP:AddButton("Equip Perk", manual(Surv, "survivor"))
 
-    local KP = K_Page:CreateSection("Perks (Killer)", "award")
+    local KP = K_Page:CreateSection("Perks", "award")
     KP:AddDropdown("Mode", {"Anti Gen", "Fast Gameplay"}, false, function(value)
         Kill.preset = option(value) or Kill.preset
     end, {Default = "Anti Gen", Flag = "KillPerkPreset"})

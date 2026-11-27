@@ -10,6 +10,7 @@ local CollectionService, localPlayer = ctx.CollectionService, ctx.localPlayer
                 if e then
                     pcall(function() e.hl:Destroy() end)
                     pcall(function() e.gui:Destroy() end)
+                    pcall(function() if e.mark then e.mark:Destroy() end end)
                     T.items[model] = nil
                 end
             end
@@ -106,9 +107,9 @@ local CollectionService, localPlayer = ctx.CollectionService, ctx.localPlayer
                                     holder = model:FindFirstAncestor("BearTrap") or model
                                 end
                                 local armed = holder:GetAttribute("Armed") ~= false and holder:GetAttribute("Triggered") ~= true
-                                local color = armed and Color3.fromRGB(60, 110, 255) or Color3.fromRGB(150, 150, 150)
+                                local color = armed and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(150, 150, 150)
                                 local e = T.items[model]
-                                if not e or not e.hl.Parent or not e.gui.Parent then
+                                if not e or not e.hl.Parent or not e.gui.Parent or not (e.mark and e.mark.Parent) then
                                     clear(model)
                                     local hl = Instance.new("Highlight")
                                     hl.FillTransparency = 0.78
@@ -138,13 +139,32 @@ local CollectionService, localPlayer = ctx.CollectionService, ctx.localPlayer
                                     stroke.Thickness = 1
                                     stroke.Transparency = 0.35
                                     stroke.Parent = label
-                                    e = {hl = hl, gui = gui, label = label, stroke = stroke}
+                                    local mark = Instance.new("BillboardGui")
+                                    mark.Name = "TrapMark"
+                                    mark.Size = UDim2.fromOffset(40, 40)
+                                    mark.StudsOffset = Vector3.new(0, 6, 0)
+                                    mark.AlwaysOnTop = true
+                                    mark.MaxDistance = 350
+                                    mark.Adornee = part
+                                    mark.Parent = part
+                                    local bang = Instance.new("TextLabel")
+                                    bang.Size = UDim2.fromScale(1, 1)
+                                    bang.BackgroundTransparency = 1
+                                    bang.Font = Enum.Font.GothamBlack
+                                    bang.TextSize = 32
+                                    bang.Text = "!"
+                                    bang.TextColor3 = Color3.fromRGB(255, 40, 40)
+                                    bang.TextStrokeTransparency = 0.2
+                                    bang.TextStrokeColor3 = Color3.fromRGB(30, 0, 0)
+                                    bang.Parent = mark
+                                    e = {hl = hl, gui = gui, label = label, stroke = stroke, mark = mark, bang = bang}
                                     T.items[model] = e
                                 end
                                 e.hl.FillColor = color
                                 e.hl.OutlineColor = color
                                 e.label.TextColor3 = color
                                 e.stroke.Color = color
+                                e.mark.Enabled = armed
                                 local dist = root and math.floor((part.Position - root.Position).Magnitude) or 0
                                 e.label.Text = string.format("%s · %dm", armed and "Trap" or "Trap (off)", dist)
                             end

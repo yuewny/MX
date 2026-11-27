@@ -162,7 +162,7 @@ do
         end
     end)
 
-    SilentCard:AddToggle("Silent Flask", false, function(on)
+    SilentCard:AddToggle("Silent Aim Cure", false, function(on)
         KA.flaskOn = on
     end, {Flag = "SilentAimFlask"})
 
@@ -216,7 +216,7 @@ do
         return delta.Unit, root.Parent
     end
 
-    SilentCard:AddToggle("Silent Chain", false, function(on)
+    SilentCard:AddToggle("Silent Aim Butcher", false, function(on)
         KA.chainOn = on
     end, {Flag = "SilentAimChain"})
 
@@ -245,7 +245,7 @@ do
         end
     end))
 
-    KillerAbilityCard:AddToggle("Aim Lock (Hidden)", false, function(on)
+    KillerAbilityCard:AddToggle("Aim Lock", false, function(on)
         KA.hiddenOn = on
         HL.target = nil
     end, {Flag = "AimLockHidden"})
@@ -417,7 +417,7 @@ do
         end
     end)
 
-    KillerAbilityCard:AddToggle("Auto Stalk (Stalker)", false, function(on)
+    KillerAbilityCard:AddToggle("Auto Stalk", false, function(on)
         S.on = on
         if not on then
             local _, stop = stalkerRemotes()
