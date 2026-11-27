@@ -1144,12 +1144,12 @@ do
 
     ExecuteParry = function(killerRoot)
         if _G.MX.State.ParryCooldown then
-            return
+            return false
         end
 
         local now = os.clock()
         if _G.MX.State.LastParryFire and now - _G.MX.State.LastParryFire < 0.15 then
-            return
+            return true
         end
 
         pcall(faceKiller, killerRoot)
@@ -1157,16 +1157,16 @@ do
         if client then
             pcall(patchParryClient, client)
             if not client:CanUse() then
-                return
+                return false
             end
             _G.MX.State.LastParryFire = now
             task.spawn(client.Parry, client)
-            return
+            return true
         end
 
         local character = localPlayer.Character
         if not parryAllowed(character) then
-            return
+            return false
         end
         _G.MX.State.LastParryFire = now
         task.spawn(function()
@@ -1228,6 +1228,7 @@ do
                 end
             end
         end)
+        return true
     end
 
     ParryHUD.Scan = function()
@@ -1511,8 +1512,7 @@ do
                     if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude > _G.MX.ParryConfig.ParryRadius then
                         return false
                     end
-                    ExecuteParry(humanoidRootPart2)
-                    return true
+                    return ExecuteParry(humanoidRootPart2)
                 end
 
                 if fn12() then
@@ -1529,8 +1529,7 @@ do
             else
                 local n = _G.MX.ParryConfig.ParryRadius
 
-                if magnitude <= n and true then
-                    ExecuteParry(humanoidRootPart2)
+                if magnitude <= n and ExecuteParry(humanoidRootPart2) then
                     return
                 end
                 local now = os.clock()
@@ -1538,9 +1537,7 @@ do
 
                 connection = MXTrack(RunService.Heartbeat:Connect(function()
                     if os.clock() - now < 0.6 and not _G.MX.State.ParryCooldown and humanoidRootPart and humanoidRootPart2 and humanoidRootPart.Parent and humanoidRootPart2.Parent and not IsDowned(character) then
-                        if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude <= n and true then
-                            ExecuteParry(humanoidRootPart2)
-
+                        if (humanoidRootPart.Position - humanoidRootPart2.Position).Magnitude <= n and ExecuteParry(humanoidRootPart2) then
                             if connection then
                                 connection:Disconnect()
                             end
@@ -2217,25 +2214,75 @@ do
         table.insert(_G.MX.LowGFX.Saved, {obj = arg, kind = arg2, extra = arg3})
     end
 
+    local function isOurs(inst)
+        local node = inst
+        while node and node ~= workspace and node ~= game do
+            if string.sub(node.Name, 1, 5) == "MXHUB" then
+                return true
+            end
+            node = node.Parent
+        end
+        return false
+    end
+
+    local function inAvatar(inst)
+        local model = inst:FindFirstAncestorWhichIsA("Model")
+        while model and model ~= workspace do
+            if model:FindFirstChildOfClass("Humanoid") then
+                return true
+            end
+            local parent = model.Parent
+            model = parent and parent:FindFirstAncestorWhichIsA("Model")
+        end
+        return false
+    end
+
     LowGFX_ProcessOne = function(arg)
         if not _G.MX.LowGFX.Enabled or not arg then
             return
         end
         local lowGFX = _G.MX.LowGFX
 
-        if lowGFX.Parts and (arg:IsA("BasePart") or arg:IsA("UnionOperation") or arg:IsA("MeshPart")) and arg.Material ~= Enum.Material.SmoothPlastic then
-            fn16(arg, "Part", arg.Material)
-            arg.Material = Enum.Material.SmoothPlastic
+        local isEffect = arg:IsA("ParticleEmitter") or arg:IsA("Smoke") or arg:IsA("Explosion") or arg:IsA("Sparkles") or arg:IsA("Fire")
+            or arg:IsA("Trail") or arg:IsA("Beam") or arg:IsA("Light")
+
+        if isEffect then
+            if lowGFX.Particles and arg.Enabled ~= false and not isOurs(arg) then
+                fn16(arg, "Particle", true)
+                arg.Enabled = false
+            end
+            return
         end
 
-        if lowGFX.Particles and (arg:IsA("ParticleEmitter") or arg:IsA("Smoke") or arg:IsA("Explosion") or arg:IsA("Sparkles") or arg:IsA("Fire")) and arg.Enabled ~= false then
-            fn16(arg, "Particle", true)
-            arg.Enabled = false
+        if arg:IsA("ForceField") then
+            if arg.Visible then
+                fn16(arg, "Visible", true)
+                arg.Visible = false
+            end
+            return
         end
 
         if lowGFX.VisualEffects and (arg:IsA("BloomEffect") or arg:IsA("BlurEffect") or arg:IsA("DepthOfFieldEffect") or arg:IsA("SunRaysEffect") or arg:IsA("ColorCorrectionEffect")) and arg.Enabled ~= false then
             fn16(arg, "VFX", true)
             arg.Enabled = false
+            return
+        end
+
+        if lowGFX.Sky and (arg:IsA("Sky") or arg:IsA("Atmosphere") or arg:IsA("Clouds")) then
+            fn16(arg, "Detach", arg.Parent)
+            arg.Parent = nil
+            return
+        end
+
+        local isPart = arg:IsA("BasePart")
+        local isSkin = arg:IsA("Decal") or arg:IsA("Texture") or arg:IsA("SpecialMesh") or arg:IsA("SurfaceAppearance")
+        if not (isPart or isSkin) or isOurs(arg) or inAvatar(arg) then
+            return
+        end
+
+        if lowGFX.Parts and isPart and arg.Material ~= Enum.Material.SmoothPlastic then
+            fn16(arg, "Part", arg.Material)
+            arg.Material = Enum.Material.SmoothPlastic
         end
 
         if lowGFX.Textures then
@@ -2254,19 +2301,9 @@ do
             end
         end
 
-        if lowGFX.Parts and arg:IsA("BasePart") and arg.CastShadow then
+        if lowGFX.Parts and isPart and arg.CastShadow then
             fn16(arg, "Shadow", true)
             arg.CastShadow = false
-        end
-
-        if lowGFX.Particles and arg:IsA("Light") and arg.Enabled then
-            fn16(arg, "Particle", true)
-            arg.Enabled = false
-        end
-
-        if lowGFX.Sky and (arg:IsA("Sky") or arg:IsA("Atmosphere") or arg:IsA("Clouds")) then
-            fn16(arg, "Detach", arg.Parent)
-            arg.Parent = nil
         end
     end
 
@@ -2321,6 +2358,8 @@ do
                         end
                     elseif v4.kind == "Shadow" then
                         obj.CastShadow = v4.extra
+                    elseif v4.kind == "Visible" then
+                        obj.Visible = v4.extra
                     else
                         obj.Enabled = v4.extra
                     end
@@ -2715,22 +2754,29 @@ do
         end
 
         _G.MX.AutoRun.MobileThread = task.spawn(function()
+            local lastTap = -10
+            local wantSince = nil
             while _G.MX.AutoRun.Mobile do
-                local v4 = fn19()
-                local v5 = fn20()
-                local v6 = fn21()
-
-                if v5 then
-                    if v6 then
+                local character = localPlayer.Character
+                local blocked = character == nil
+                    or character:GetAttribute("IsCarried") == true
+                    or character:GetAttribute("Trapped") == true
+                    or character:GetAttribute("Knocked") == true
+                    or character:GetAttribute("IsHooked") == true
+                    or character:GetAttribute("Immobile") == true
+                    or character:GetAttribute("Crouching") == true
+                    or character:GetAttribute("Crouchingserver") == true
+                if not blocked and fn19() and not fn21() then
+                    wantSince = wantSince or os.clock()
+                    if os.clock() - wantSince >= 0.18 and os.clock() - lastTap >= 0.6 then
                         fn18()
+                        lastTap = os.clock()
+                        wantSince = nil
                     end
-                elseif v4 and not v6 then
-                    fn18()
-                elseif not v4 and v6 then
-                    fn18()
+                else
+                    wantSince = nil
                 end
-
-                task.wait(0.12)
+                task.wait(0.06)
             end
 
             _G.MX.AutoRun.MobileThread = nil
@@ -2924,7 +2970,7 @@ do
                 fired = pcall(firesignal, button.MouseButton1Down)
                 pcall(firesignal, button.MouseButton1Up)
             end
-            if type(getconnections) == "function" then
+            if not fired and type(getconnections) == "function" then
                 local ok = pcall(function()
                     for _, connection in ipairs(getconnections(button.MouseButton1Down)) do
                         connection:Fire()
@@ -3000,6 +3046,9 @@ do
                     return
                 end
                 local flag4 = _G.MX.Auto.SkillCheckMode == "Instant" or (forced and not _G.MX.Auto.SkillCheck)
+                if flag4 and (_G.MX.State.instantFails or 0) >= 2 then
+                    flag4 = false
+                end
 
                 if not flag4 then
                     flag4 = _G.MX.Auto.SkillCheckMode == "Random"
@@ -3034,6 +3083,9 @@ do
                             line.Rotation = lockGoal + 109
                             fn24(false)
                             task.wait(0.1)
+                        end
+                        if check.Visible and goal.Rotation == lockGoal then
+                            _G.MX.State.instantFails = (_G.MX.State.instantFails or 0) + 1
                         end
                         lockConn:Disconnect()
                         task.wait(0.05)
@@ -3078,6 +3130,7 @@ do
             end
 
             _G.MX.State.RandomMode_IsNormal = false
+            _G.MX.State.instantFails = 0
         end))
     end
 
@@ -3284,6 +3337,34 @@ do
             end
         end
 
+        local velSamples = setmetatable({}, {__mode = "k"})
+        MXTrack(RunService.Heartbeat:Connect(function()
+            if not _G.MX.AimConfig.Aim_SilentVeilV2 then
+                return
+            end
+            local now = os.clock()
+            for _, pl in ipairs(Players:GetPlayers()) do
+                local c = pl.Character
+                local r = c and c:FindFirstChild("HumanoidRootPart")
+                if r and pl ~= localPlayer then
+                    local sm = velSamples[c]
+                    if not sm then
+                        velSamples[c] = {pos = r.Position, t = now, age = now, vel = Vector3.new(0, 0, 0)}
+                    else
+                        local dt = now - sm.t
+                        if dt >= 0.05 then
+                            local raw = (r.Position - sm.pos) / dt
+                            local old = sm.vel
+                            sm.vel = Vector3.new(old.X + (raw.X - old.X) * 0.6, 0, old.Z + (raw.Z - old.Z) * 0.6)
+                            sm.pos = r.Position
+                            sm.t = now
+                            sm.age = now
+                        end
+                    end
+                end
+            end
+        end))
+
         local function veilAimPayload(payload)
             if typeof(payload) ~= "table" or typeof(payload.Direction) ~= "Vector3" or typeof(payload.Origin) ~= "Vector3" then
                 return nil
@@ -3315,6 +3396,10 @@ do
             end
             local airborne = humanoid ~= nil and humanoid.FloorMaterial == Enum.Material.Air
             local flatVel = Vector3.new(vel.X, 0, vel.Z)
+            local sample = velSamples[model]
+            if sample and sample.vel and sample.age and os.clock() - sample.age < 0.3 then
+                flatVel = Vector3.new(sample.vel.X, 0, sample.vel.Z)
+            end
             local vy = airborne and vel.Y or 0
             local worldG = workspace.Gravity
             local renderedAt = model:GetAttribute("VeilRenderedAt")
@@ -3716,7 +3801,7 @@ do
                             end)
                             local moved = (newPayload.Origin - payload.Origin).Magnitude > 0.01
                             if okAng and (moved or ang <= 85) then
-                                pcall(reportVeil, string.format("arah diubah %.1f derajat", ang))
+                                pcall(reportVeil, string.format("arah diubah %.1f derajat, geser %d stud, titik awal %s", ang, math.floor((newPayload.Origin - payload.Origin).Magnitude + 0.5), moved and "dipindah" or "asli"))
                                 payload = newPayload
                             else
                                 pcall(reportVeil, "sudut terlalu besar, lemparan asli dipakai")
@@ -4499,40 +4584,77 @@ do
             local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
 
             if humanoidRootPart then
-                if not _G.MX.State.AutoParryAdornment or _G.MX.State.AutoParryAdornment.Parent ~= humanoidRootPart then
-                    if _G.MX.State.AutoParryAdornment then
-                        _G.MX.State.AutoParryAdornment:Destroy()
-                    end
-
-                    _G.MX.State.AutoParryAdornment = Instance.new("CylinderHandleAdornment")
-                    _G.MX.State.AutoParryAdornment.Name = "AutoParryCircleESP"
-                    _G.MX.State.AutoParryAdornment.Height = 0.05
-                    _G.MX.State.AutoParryAdornment.Transparency = 0.3
-                    _G.MX.State.AutoParryAdornment.Adornee = humanoidRootPart
-                    _G.MX.State.AutoParryAdornment.Parent = humanoidRootPart
-                    _G.MX.State.AutoParryAdornment.ZIndex = 0
-                    _G.MX.State.AutoParryAdornment.AlwaysOnTop = false
+                local ring = _G.MX.State.AutoParryAdornment
+                if not ring or ring.Parent ~= humanoidRootPart then
+                    if ring then ring:Destroy() end
+                    if _G.MX.State.AutoParryGlow then _G.MX.State.AutoParryGlow:Destroy() end
+                    ring = Instance.new("CylinderHandleAdornment")
+                    ring.Name = "AutoParryCircleESP"
+                    ring.Height = 0.04
+                    ring.Transparency = 0.25
+                    ring.Adornee = humanoidRootPart
+                    ring.ZIndex = 2
+                    ring.AlwaysOnTop = false
+                    ring.Parent = humanoidRootPart
+                    local glow = Instance.new("CylinderHandleAdornment")
+                    glow.Name = "AutoParryCircleGlow"
+                    glow.Height = 0.02
+                    glow.Adornee = humanoidRootPart
+                    glow.ZIndex = 1
+                    glow.AlwaysOnTop = false
+                    glow.Parent = humanoidRootPart
+                    local fill = Instance.new("CylinderHandleAdornment")
+                    fill.Name = "AutoParryCircleFill"
+                    fill.Height = 0.01
+                    fill.Adornee = humanoidRootPart
+                    fill.ZIndex = 0
+                    fill.AlwaysOnTop = false
+                    fill.Parent = humanoidRootPart
+                    _G.MX.State.AutoParryAdornment = ring
+                    _G.MX.State.AutoParryGlow = glow
+                    _G.MX.State.AutoParryFill = fill
+                    _G.MX.State.AutoParryColor = Color3.fromRGB(255, 255, 255)
                 end
+                local glow, fill = _G.MX.State.AutoParryGlow, _G.MX.State.AutoParryFill
 
                 local parryRadius = _G.MX.ParryConfig.ParryRadius
-                _G.MX.State.AutoParryAdornment.Radius = parryRadius
-                _G.MX.State.AutoParryAdornment.InnerRadius = math.max(0.1, parryRadius - 0.15)
-                _G.MX.State.AutoParryAdornment.CFrame = CFrame.new(0, -3, 0) * CFrame.Angles(math.rad(90), 0, 0)
-
+                local now = os.clock()
+                local pulse = 0.5 + 0.5 * math.sin(now * 2.2)
+                local target
                 if _G.MX.State.ParryCooldown then
-                    _G.MX.State.AutoParryAdornment.Color3 = Color3.fromRGB(255, 128, 0)
+                    target = Color3.fromRGB(255, 150, 40)
                 elseif _G.MX.ParryConfig.ParryAggressive then
-                    _G.MX.State.AutoParryAdornment.Color3 = Color3.fromRGB(255, 0, 0)
+                    target = Color3.fromRGB(255, 70, 90)
                 else
-                    _G.MX.State.AutoParryAdornment.Color3 = Color3.fromRGB(255, 255, 255)
+                    target = Color3.fromRGB(120, 200, 255)
                 end
+                local col = _G.MX.State.AutoParryColor:Lerp(target, 0.12)
+                _G.MX.State.AutoParryColor = col
+                local base = CFrame.new(0, -3, 0) * CFrame.Angles(math.rad(90), 0, 0)
+                ring.Radius = parryRadius
+                ring.InnerRadius = math.max(0.1, parryRadius - 0.22)
+                ring.CFrame = base
+                ring.Color3 = col
+                ring.Transparency = 0.18 + 0.12 * pulse
+                glow.Radius = parryRadius + 0.55
+                glow.InnerRadius = math.max(0.1, parryRadius - 0.55)
+                glow.CFrame = base
+                glow.Color3 = col
+                glow.Transparency = 0.82 - 0.1 * pulse
+                fill.Radius = parryRadius
+                fill.InnerRadius = 0
+                fill.CFrame = base
+                fill.Color3 = col
+                fill.Transparency = 0.94
             elseif _G.MX.State.AutoParryAdornment then
-                _G.MX.State.AutoParryAdornment:Destroy()
-                _G.MX.State.AutoParryAdornment = nil
+                for _, k in ipairs({"AutoParryAdornment", "AutoParryGlow", "AutoParryFill"}) do
+                    if _G.MX.State[k] then _G.MX.State[k]:Destroy() _G.MX.State[k] = nil end
+                end
             end
         elseif _G.MX.State.AutoParryAdornment then
-            _G.MX.State.AutoParryAdornment:Destroy()
-            _G.MX.State.AutoParryAdornment = nil
+            for _, k in ipairs({"AutoParryAdornment", "AutoParryGlow", "AutoParryFill"}) do
+                if _G.MX.State[k] then _G.MX.State[k]:Destroy() _G.MX.State[k] = nil end
+            end
         end
 
         if _G.MX.CameraFOV.Enabled then
@@ -4719,11 +4841,29 @@ do
             _G.MX.Esp.fadeIn(billboardGui)
             local frame2 = Instance.new("Frame")
             frame2.Name = "Box"
-            frame2.BackgroundTransparency = 1
-            frame2.Size = UDim2.new(1, 0, 1, 0)
+            frame2.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+            frame2.BackgroundTransparency = 0.38
+            frame2.AutomaticSize = Enum.AutomaticSize.XY
+            frame2.Size = UDim2.new(0, 0, 0, 0)
             frame2.AnchorPoint = Vector2.new(0.5, 0.5)
             frame2.Position = UDim2.new(0.5, 0, 0.5, 0)
             frame2.Parent = billboardGui
+            local pillCorner = Instance.new("UICorner")
+            pillCorner.CornerRadius = UDim.new(0, 7)
+            pillCorner.Parent = frame2
+            local pillStroke = Instance.new("UIStroke")
+            pillStroke.Name = "PillStroke"
+            pillStroke.Color = Color3.fromRGB(255, 255, 255)
+            pillStroke.Transparency = 0.82
+            pillStroke.Thickness = 1
+            pillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            pillStroke.Parent = frame2
+            local pillPad = Instance.new("UIPadding")
+            pillPad.PaddingLeft = UDim.new(0, 8)
+            pillPad.PaddingRight = UDim.new(0, 8)
+            pillPad.PaddingTop = UDim.new(0, 3)
+            pillPad.PaddingBottom = UDim.new(0, 3)
+            pillPad.Parent = frame2
 
             if arg.noDistScale then
                 billboardGui:SetAttribute("NoDistScale", true)
@@ -8011,6 +8151,52 @@ do
             return hit and hit.Position or pos
         end
 
+        local pathFolder
+        local function clearPath()
+            if pathFolder then
+                pathFolder:Destroy()
+                pathFolder = nil
+            end
+        end
+        local function drawPath(waypoints)
+            clearPath()
+            if _G.MX.PathVisual == false then return end
+            pcall(function()
+                pathFolder = Instance.new("Folder")
+                pathFolder.Name = "MXHUB_Path"
+                pathFolder.Parent = workspace
+                local prev
+                for i, wp in ipairs(waypoints) do
+                    local pos = wp.Position + Vector3.new(0, 0.35, 0)
+                    local isJump = wp.Action == Enum.PathWaypointAction.Jump
+                    local dot = Instance.new("Part")
+                    dot.Anchored, dot.CanCollide, dot.CanTouch, dot.CanQuery, dot.CastShadow = true, false, false, false, false
+                    dot.Shape = Enum.PartType.Ball
+                    dot.Material = Enum.Material.Neon
+                    dot.Color = isJump and Color3.fromRGB(255, 200, 80) or Color3.fromRGB(120, 200, 255)
+                    dot.Size = Vector3.one * (isJump and 0.9 or 0.5)
+                    dot.Transparency = 0.25
+                    dot.Position = pos
+                    dot.Parent = pathFolder
+                    if prev then
+                        local len = (pos - prev).Magnitude
+                        if len > 0.05 then
+                            local seg = Instance.new("Part")
+                            seg.Anchored, seg.CanCollide, seg.CanTouch, seg.CanQuery, seg.CastShadow = true, false, false, false, false
+                            seg.Material = Enum.Material.Neon
+                            seg.Color = Color3.fromRGB(120, 200, 255)
+                            seg.Transparency = 0.55
+                            seg.Size = Vector3.new(0.14, 0.14, len)
+                            seg.CFrame = CFrame.lookAt((pos + prev) / 2, pos)
+                            seg.Parent = pathFolder
+                        end
+                    end
+                    prev = pos
+                end
+            end)
+        end
+        lib.API.Track(clearPath)
+
         function W.walkTo(goal, opts)
             opts = opts or {}
             local stop = opts.stop or 3
@@ -8055,6 +8241,7 @@ do
                     end
                 end))
                 local waypoints = path:GetWaypoints()
+                drawPath(waypoints)
                 local arrived, stuck = false, false
 
                 for i = 2, #waypoints do
@@ -8072,6 +8259,7 @@ do
                         local _, h2, r2 = me()
                         if not (h2 and r2) or h2.Health <= 0 or not active() or os.clock() - started > timeout then
                             blockedConn:Disconnect()
+                            clearPath()
                             return false, "inactive"
                         end
                         if (r2.Position - goal).Magnitude <= stop then
@@ -8103,6 +8291,7 @@ do
                     end
                 end
                 blockedConn:Disconnect()
+                clearPath()
 
                 local _, hum2, root2 = me()
                 if arrived or (root2 and (root2.Position - goal).Magnitude <= stop) then
