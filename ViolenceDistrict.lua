@@ -3105,7 +3105,8 @@ do
                     local remaining = (goalRot + center - rot) % 360
                     local lead = st.dt * 1.5 + 0.01
                     local inWindow = rel >= lo and rel <= hi
-                    if inWindow or (remaining <= st.vel * lead and remaining < 90 and rel < center) then
+                    local missedGreat = mode == "Legit" and rel > hi and rel <= 150
+                    if inWindow or missedGreat or (remaining <= st.vel * lead and remaining < 90 and rel < center) then
                         st.fired = true
                         _G.MX.State.busy = true
                         task.spawn(function()
@@ -6401,14 +6402,6 @@ do
                         local dropped = state == "Dropped"
                         local color = dropped and Color3.fromRGB(255, 70, 70) or _G.MX.ESPColors.Pallet
                         _G.MX.Esp.styleHighlight(palletEH, color)
-                        CreateModernESP(basePart, "PAL_Text", {
-                            name = "PALLET",
-                            infoRich = string.format("<font color=\"%s\">%s</font> <font color=\"#888888\">·</font> %dm", dropped and "#FF4646" or "#FF8000", dropped and "DROPPED" or "UP", math.floor(dist)),
-                            color = color,
-                            offsetY = 2.5,
-                            noSeparator = true,
-                            noDistScale = true,
-                        })
                     end
                 end
             end
@@ -6441,14 +6434,6 @@ do
                         end
                         windowEH.Adornee = window
                         _G.MX.Esp.styleHighlight(windowEH, _G.MX.ESPColors.Window)
-                        CreateModernESP(basePart, "WIN_Text", {
-                            name = "WINDOW",
-                            infoRich = string.format("<font color=\"#00BEFF\">VAULT</font> <font color=\"#888888\">·</font> %dm", math.floor(dist)),
-                            color = _G.MX.ESPColors.Window,
-                            offsetY = 2.5,
-                            noSeparator = true,
-                            noDistScale = true,
-                        })
                     end
                 end
             end
